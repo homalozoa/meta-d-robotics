@@ -61,6 +61,36 @@ for kernel_patch in \
   require_line "$kernel_recipe" "    file://${kernel_patch} \\"
 done
 
+mkimage_recipe="$layer_dir/recipes-bsp/u-boot/d-robotics-mkimage-native_3.5.0.bb"
+[ -f "$mkimage_recipe" ] || fail "RDK X5 mkimage recipe is missing"
+require_line "$mkimage_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$mkimage_recipe" 'COMPATIBLE_MACHINE:class-native = ".*"'
+require_line "$mkimage_recipe" 'BB_GIT_SHALLOW_DEPTH_uboot ?= "1"'
+require_line "$mkimage_recipe" 'B = "${WORKDIR}/build"'
+require_line "$mkimage_recipe" '    oe_runmake -C ${S} tools-only NO_SDL=1 O=${B}'
+if rg -q '^[[:space:]]*oe_runmake.*cross_tools' "$mkimage_recipe"; then
+  fail "RDK X5 mkimage recipe must use the vendor tools-only target"
+fi
+
+bootfiles_recipe="$layer_dir/recipes-bsp/bootfiles/d-robotics-bootfiles.bb"
+boot_cmd="$layer_dir/recipes-bsp/bootfiles/files/boot.cmd"
+boot_config="$layer_dir/recipes-bsp/bootfiles/files/hobot_config.sh"
+[ -f "$bootfiles_recipe" ] || fail "RDK X5 bootfiles recipe is missing"
+[ -f "$boot_cmd" ] || fail "RDK X5 boot command source is missing"
+[ -f "$boot_config" ] || fail "RDK X5 config partition script is missing"
+require_line "$bootfiles_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$bootfiles_recipe" 'S = "${UNPACKDIR}"'
+require_line "$bootfiles_recipe" 'DEPENDS = "d-robotics-mkimage-native dosfstools-native mtools-native"'
+require_line "$bootfiles_recipe" '    mkfs.vfat -F 32 --invariant -n CONFIG ${B}/hobot-config.vfat'
+require_line "$bootfiles_recipe" '    truncate -s 256M ${B}/hobot-config.vfat'
+require_line "$boot_cmd" 'setenv fdtfile "x5-rdk-v1p0.dtb"'
+require_line "$boot_cmd" '    setenv fdtfile "x5-rdk.dtb"'
+require_line "$boot_cmd" '        booti ${kernel_addr_r} - ${fdt_addr_r}'
+require_line "$boot_config" 'exit 0'
+if rg -n -i '(^|[;[:space:]])(sf|nand|mtd|mmc)[[:space:]]+(erase|write)' "$boot_cmd"; then
+  fail "RDK X5 boot command must not write persistent storage"
+fi
+
 while IFS= read -r source_revision; do
   source_revision="${source_revision#*\"}"
   source_revision="${source_revision%\"}"
