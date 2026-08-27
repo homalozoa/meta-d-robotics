@@ -1,0 +1,45 @@
+From a4f87d208d908c6af21c0606723e4566ab4bd76b Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 04:17:00 +0800
+Subject: [PATCH] staging: rtl8852bs: match header guards and PHY status API
+
+Correct a mismatched include guard and make the PHY-status bitmap prototypes
+match their definitions.  Both mismatches are rejected when the RDK X5
+defconfig's CONFIG_WERROR is used with the Wrynose toolchain.
+
+Upstream-Status: Pending
+
+---
+ .../phl/hal_g6/phy/bb/halbb_physts.h          | 4 ++--
+ .../phy/rf/halrf_8852b/halrf_ops_rtl8852b.h   | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/staging/rtl8852bs/phl/hal_g6/phy/bb/halbb_physts.h b/drivers/staging/rtl8852bs/phl/hal_g6/phy/bb/halbb_physts.h
+index 26dc8b31d9a6..1a032c24b3f1 100644
+--- a/drivers/staging/rtl8852bs/phl/hal_g6/phy/bb/halbb_physts.h
++++ b/drivers/staging/rtl8852bs/phl/hal_g6/phy/bb/halbb_physts.h
+@@ -766,8 +766,8 @@ void halbb_physts_parsing(struct bb_info *bb,
+ 			  struct physts_result *rpt,
+ 			  bool physts_rpt_valid, struct physts_rxd *desc,
+ 			  bool is_cck_rate, bool is_ie8_valid);
+-void halbb_physts_ie_bitmap_set(struct bb_info *bb, u32 ie_page, u32 bitmap);
+-u32 halbb_physts_ie_bitmap_get(struct bb_info *bb, u32 ie_page);
++void halbb_physts_ie_bitmap_set(struct bb_info *bb, enum bb_physts_bitmap_t ie_page, u32 bitmap);
++u32 halbb_physts_ie_bitmap_get(struct bb_info *bb, enum bb_physts_bitmap_t ie_page);
+ void halbb_physts_ie_bitmap_en(struct bb_info *bb, enum bb_physts_bitmap_t type,
+ 			       enum bb_physts_ie_t ie, bool en);
+ void halbb_phy_sts_manual_trig(struct bb_info *bb, enum bb_mode_type mode, u8 ss);
+diff --git a/drivers/staging/rtl8852bs/phl/hal_g6/phy/rf/halrf_8852b/halrf_ops_rtl8852b.h b/drivers/staging/rtl8852bs/phl/hal_g6/phy/rf/halrf_8852b/halrf_ops_rtl8852b.h
+index 5e0e78d49dd7..f6ae2e3fe77e 100644
+--- a/drivers/staging/rtl8852bs/phl/hal_g6/phy/rf/halrf_8852b/halrf_ops_rtl8852b.h
++++ b/drivers/staging/rtl8852bs/phl/hal_g6/phy/rf/halrf_8852b/halrf_ops_rtl8852b.h
+@@ -23,6 +23,6 @@
+  *****************************************************************************/
+ #ifndef __HALRF_OPS_RTL8852B_H__
+-#define __HALRF_OPS_RTL8852B__
++#define __HALRF_OPS_RTL8852B_H__
+ #ifdef RF_8852B_SUPPORT
+
+
+-- 
+2.43.0

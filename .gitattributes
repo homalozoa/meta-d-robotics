@@ -1,0 +1,4 @@
+# Unified patches intentionally preserve upstream context indentation and
+# git-format-patch trailers, so do not treat those payload bytes as layer
+# source whitespace errors.
+*.patch whitespace=-blank-at-eol,-space-before-tab

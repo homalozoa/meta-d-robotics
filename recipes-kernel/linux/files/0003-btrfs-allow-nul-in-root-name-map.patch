@@ -1,0 +1,32 @@
+From e83b6f3d286431196fe70df11daf312fc4b5836c Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 03:11:00 +0800
+Subject: [PATCH] btrfs: reserve a terminator byte for root-map names
+
+The vendor 6.1 tree stores BTRFS root names in a 16-byte array, but
+"BLOCK_GROUP_TREE" uses all 16 bytes before its NUL terminator.  Wrynose's
+GCC detects the truncated initializer with CONFIG_WERROR enabled.
+
+Reserve one more byte so every table entry remains a valid C string.  This
+also prevents a root-name lookup from reading into the next table field.
+
+Upstream-Status: Pending
+
+---
+ fs/btrfs/print-tree.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/btrfs/print-tree.c b/fs/btrfs/print-tree.c
+index e3cd02259a10..23e3c2af64ed 100644
+--- a/fs/btrfs/print-tree.c
++++ b/fs/btrfs/print-tree.c
+@@ -10,6 +10,6 @@
+ struct root_name_map {
+ 	u64 id;
+-	char name[16];
++	char name[17];
+ };
+ 
+ static const struct root_name_map root_map[] = {
+-- 
+2.43.0

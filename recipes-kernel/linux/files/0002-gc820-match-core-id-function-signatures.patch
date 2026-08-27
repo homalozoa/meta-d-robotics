@@ -1,0 +1,41 @@
+From 322b15957d025168e6a5b8832709c123c657c73d Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 03:10:00 +0800
+Subject: [PATCH] gc820: match core-id function definitions to declarations
+
+The GC820 OS header declares the register accessors with n2d_core_id_t,
+while the implementation uses n2d_uint32_t.  Wrynose's GCC diagnoses the
+conflicting declaration and definition as an enum/integer mismatch, and the
+vendor defconfig promotes it to an error.
+
+Use the declared core-id type in the two definitions.  The functions only
+use the value as a register-base index, so this is an ABI-consistent
+declaration fix without changing their behavior.
+
+Upstream-Status: Pending
+
+---
+ .../gc820/nano2Dkernel/linux/nano2D_kernel_os.c   | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/misc/verisilicon/gc820/nano2Dkernel/linux/nano2D_kernel_os.c b/drivers/misc/verisilicon/gc820/nano2Dkernel/linux/nano2D_kernel_os.c
+index d6cfbaf03e5b..70c35d4a1f9c 100644
+--- a/drivers/misc/verisilicon/gc820/nano2Dkernel/linux/nano2D_kernel_os.c
++++ b/drivers/misc/verisilicon/gc820/nano2Dkernel/linux/nano2D_kernel_os.c
+@@ -1317,12 +1317,12 @@
+ 	return error;
+ }
+ 
+-n2d_uint32_t n2d_kernel_os_peek_with_core(n2d_os_t *os, n2d_uint32_t core, n2d_uint32_t address)
++n2d_uint32_t n2d_kernel_os_peek_with_core(n2d_os_t *os, n2d_core_id_t core, n2d_uint32_t address)
+ {
+ 	return *(uint32_t *)(((uint8_t *)os->device->register_bases_mapped[core]) + address);
+ }
+ 
+-void n2d_kernel_os_poke_with_core(n2d_os_t *os, n2d_uint32_t core, n2d_uint32_t address,
++void n2d_kernel_os_poke_with_core(n2d_os_t *os, n2d_core_id_t core, n2d_uint32_t address,
+ 				  n2d_uint32_t data)
+ {
+ 	/* Write data to the GPU register. */
+-- 
+2.43.0

@@ -1,0 +1,36 @@
+From ce1f9cd1f0942c7612c40a0df3620e38b6bc5447 Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 03:21:00 +0800
+Subject: [PATCH] btrfs: pass kvcalloc count before element size
+
+RDKOS 3.5.0 passes kvcalloc()'s element size as the count and the count as
+the element size.  Although multiplication is commutative for successful
+allocations, the API ordering obscures overflow checking and Wrynose GCC
+diagnoses it as transposed allocation arguments.
+
+Pass the clone-source count first and the element size second, matching the
+kvcalloc() interface and preserving the allocated size.
+
+Upstream-Status: Pending
+
+---
+ fs/btrfs/send.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/btrfs/send.c b/fs/btrfs/send.c
+index 5a440a10e319..478efd0bd844 100644
+--- a/fs/btrfs/send.c
++++ b/fs/btrfs/send.c
+@@ -7947,8 +7947,8 @@ long btrfs_ioctl_send(struct file *mnt_file, void __user *arg_)
+ 	sctx->rbtree_new_refs = RB_ROOT;
+ 	sctx->rbtree_deleted_refs = RB_ROOT;
+ 
+-	sctx->clone_roots = kvcalloc(sizeof(*sctx->clone_roots),
+-				     arg->clone_sources_count + 1,
++	sctx->clone_roots = kvcalloc(arg->clone_sources_count + 1,
++				     sizeof(*sctx->clone_roots),
+ 				     GFP_KERNEL);
+ 	if (!sctx->clone_roots) {
+ 		ret = -ENOMEM;
+-- 
+2.43.0

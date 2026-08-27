@@ -1,0 +1,31 @@
+From 0ab7268906c1f51b2b8d706ec1702637ce3b05fa Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 03:20:00 +0800
+Subject: [PATCH] gc8000l: expose QuerySignal's status result type
+
+The GC8000L implementation returns gceSTATUS, and callers use the result
+with gcmIS_ERROR(), but its Linux header declares _QuerySignal() as a
+boolean.  GCC correctly rejects the conflicting declaration and definition.
+
+Match the declaration to the implementation and its callers so status
+errors cannot be misrepresented as a boolean value.
+
+Upstream-Status: Pending
+
+---
+ .../gc8000l/hal/os/linux/kernel/gc_hal_kernel_linux.h       | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/misc/verisilicon/gc8000l/hal/os/linux/kernel/gc_hal_kernel_linux.h b/drivers/misc/verisilicon/gc8000l/hal/os/linux/kernel/gc_hal_kernel_linux.h
+index 94dbf600ffb0..97faf8fbfbd4 100644
+--- a/drivers/misc/verisilicon/gc8000l/hal/os/linux/kernel/gc_hal_kernel_linux.h
++++ b/drivers/misc/verisilicon/gc8000l/hal/os/linux/kernel/gc_hal_kernel_linux.h
+@@ -323,5 +323,5 @@ gceSTATUS _ConvertLogical2Physical(gckOS Os, gctPOINTER Logical, gctUINT32 Proc
+ 				   PLINUX_MDL Mdl, gctPHYS_ADDR_T *Physical);
+ 
+-gctBOOL _QuerySignal(gckOS Os, gctSIGNAL Signal);
++gceSTATUS _QuerySignal(gckOS Os, gctSIGNAL Signal);
+ 
+ static inline gctINT _GetProcessID(void)
+-- 
+2.43.0

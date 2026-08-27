@@ -1,0 +1,34 @@
+From 8d43ac9bcf351ef1d526e0f6f0a3b2c9713d6001 Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 03:00:00 +0800
+Subject: [PATCH] dm-fdekey: validate delimiter before applying offset
+
+The RDKOS 3.5.0 source tests `tmp + 1` after strstr().  Pointer
+arithmetic cannot make a null pointer non-null, so current GCC correctly
+diagnoses the condition as always true when CONFIG_WERROR is enabled.
+
+Test the strstr() result before incrementing it.  This preserves the
+intended error path for a key string without its ':' delimiter and keeps
+the vendor warning policy intact.
+
+Upstream-Status: Pending
+
+---
+ drivers/md/dm-fdekey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/md/dm-fdekey.c b/drivers/md/dm-fdekey.c
+index 6ff3d22f4e36..75e9e00fd42f 100644
+--- a/drivers/md/dm-fdekey.c
++++ b/drivers/md/dm-fdekey.c
+@@ -111,7 +111,7 @@ static int handle_key(unsigned char *key, char *dr_key)
+ 	int ret;
+ 
+ 	tmp = strstr(key, ":");
+-	if (! (tmp + 1)) {
++	if (!tmp) {
+ 		return -1;
+ 	}
+ 	tmp += 1;
+-- 
+2.43.0

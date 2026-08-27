@@ -1,0 +1,53 @@
+From 6aa9215ea8299c5cb3ce12b72f1c0252695887d5 Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 04:16:00 +0800
+Subject: [PATCH] staging: rtl: retain address diagnostics without failing build
+
+The pinned Realtek vendor modules use several address comparisons on embedded
+objects.  They are always true, but changing each check would alter code in a
+vendor driver whose supported hardware behaviour cannot be validated without
+the boards.
+
+The RDK X5 defconfig enables CONFIG_WERROR.  Limit the compatibility policy to
+these two modules: keep -Waddress visible in build logs but do not promote it
+to an error.  All other in-tree code retains the strict default.
+
+Upstream-Status: Inappropriate [vendor driver compatibility]
+
+---
+ drivers/staging/rtl8723du/Makefile | 4 ++++
+ drivers/staging/rtl8852bs/Makefile | 4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/drivers/staging/rtl8723du/Makefile b/drivers/staging/rtl8723du/Makefile
+index 1d223b284651..769bfcc9e208 100644
+--- a/drivers/staging/rtl8723du/Makefile
++++ b/drivers/staging/rtl8723du/Makefile
+@@ -8,6 +8,10 @@
+ #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
+
+ EXTRA_CFLAGS += -Wno-unused-variable
++# Keep the vendor driver's embedded-object address diagnostics visible while
++# allowing the RDK X5 kernel's global CONFIG_WERROR policy to remain strict
++# for every other source directory.
++EXTRA_CFLAGS += -Wno-error=address
+ #EXTRA_CFLAGS += -Wno-unused-value
+ #EXTRA_CFLAGS += -Wno-unused-label
+ #EXTRA_CFLAGS += -Wno-unused-parameter
+diff --git a/drivers/staging/rtl8852bs/Makefile b/drivers/staging/rtl8852bs/Makefile
+index f13ca3c7e130..7e8029b2c9b0 100644
+--- a/drivers/staging/rtl8852bs/Makefile
++++ b/drivers/staging/rtl8852bs/Makefile
+@@ -8,6 +8,10 @@
+ #EXTRA_CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes
+
+ EXTRA_CFLAGS += -Wno-unused-variable
++# Keep the vendor driver's embedded-object address diagnostics visible while
++# allowing the RDK X5 kernel's global CONFIG_WERROR policy to remain strict
++# for every other source directory.
++EXTRA_CFLAGS += -Wno-error=address
+ #EXTRA_CFLAGS += -Wno-unused-value
+ EXTRA_CFLAGS += -Wno-unused-label
+ #EXTRA_CFLAGS += -Wno-unused-parameter
+-- 
+2.43.0

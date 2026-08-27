@@ -1,0 +1,34 @@
+From 7bb71831c42c7950452b28756d6718e1b4f5d6c3 Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@invalid>
+Date: Thu, 27 Aug 2026 04:15:00 +0800
+Subject: [PATCH] input: goodix: test IRQ value before polling cleanup
+
+The address of i2c_client.irq is embedded in the client object and can never
+be NULL.  The existing test consequently never stops the polling resources
+after a valid configuration is processed.
+
+Test the IRQ value instead, which is zero when this driver is using polling.
+This restores the intended cleanup and avoids the GCC -Waddress diagnostic
+enabled by the pinned RDK X5 defconfig.
+
+Upstream-Status: Pending
+
+---
+ drivers/input/touchscreen/goodix.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/input/touchscreen/goodix.c b/drivers/input/touchscreen/goodix.c
+index 95f44c1911b7..2ce8af496f72 100644
+--- a/drivers/input/touchscreen/goodix.c
++++ b/drivers/input/touchscreen/goodix.c
+@@ -598,7 +598,7 @@ static int goodix_check_cfg_8(struct goodix_ts_data *ts, const u8 *cfg, int len
+ 		return -EINVAL;
+ 	}
+ 
+-	if (!(&ts->client->irq)) {
++	if (!ts->client->irq) {
+ 		del_timer(&ts->timer);
+ 		cancel_work_sync(&ts->work_i2c_poll);
+ 	}
+-- 
+2.43.0
