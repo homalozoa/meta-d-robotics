@@ -207,7 +207,7 @@ for required_entry in \
 done
 for required_entry in \
   hobot-dnn \
-  kernel-module-bpu-hw-io-x5 \
+  hobot-bpu-driver \
   packagegroup-rdk-x5-camera; do
   rg -q "^[[:space:]]*${required_entry}[[:space:]]" "$accelerator_group" ||
     fail "RDK X5 accelerator packagegroup is missing: ${required_entry}"

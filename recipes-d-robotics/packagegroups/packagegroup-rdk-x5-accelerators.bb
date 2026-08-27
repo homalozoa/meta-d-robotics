@@ -8,11 +8,12 @@ inherit packagegroup
 COMPATIBLE_MACHINE = "^rdk-x5$"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-# The BPU I/O package carries exact, versioned dependencies on bpu_framework
-# and bpu_cores.  Keep that resolution in package metadata rather than baking
-# a kernel version into the image-facing packagegroup.
+# `module.bbclass` generates the BPU I/O subpackage only during do_package, so
+# an image cannot use that dynamic package name to discover this external
+# module recipe.  Depend on its stable, empty module metapackage instead: it
+# both schedules the recipe and carries the exact generated-module closure.
 RDEPENDS:${PN} = " \
     hobot-dnn \
-    kernel-module-bpu-hw-io-x5 \
+    hobot-bpu-driver \
     packagegroup-rdk-x5-camera \
 "
