@@ -44,6 +44,28 @@ release_include="$layer_dir/conf/machine/include/rdk-x5-release.inc"
 require_line "$release_include" 'RDK_X5_RELEASE = "3.5.0"'
 require_line "$release_include" 'RDK_X5_KERNEL_VERSION = "6.1.83"'
 
+source_matrix="$layer_dir/docs/release-3.5.0-source-matrix.md"
+[ -f "$source_matrix" ] || fail "RDK X5 source and compatibility matrix is missing"
+require_line "$source_matrix" '# RDK X5 RDKOS 3.5.0 source and compatibility matrix'
+for matrix_entry in \
+  '| `linux-d-robotics` / `kernel-*` | `6.1.83+git` |' \
+  '| `hobot-multimedia` | `3.0.5` | `RDK_X5_SRCREV_HOBOT_MULTIMEDIA` |' \
+  '| `hobot-dnn` and `hobot-dnn-dev` | `3.0.4` | `RDK_X5_SRCREV_HOBOT_DNN` |' \
+  '| `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` |' \
+  '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |'; do
+  rg -Fq -- "$matrix_entry" "$source_matrix" ||
+    fail "RDK X5 source matrix is missing recipe entry: ${matrix_entry}"
+done
+while IFS= read -r source_pin; do
+  source_name="${source_pin%% = *}"
+  source_revision="${source_pin#*\"}"
+  source_revision="${source_revision%\"}"
+  rg -Fq -- "\`${source_name}\`" "$source_matrix" ||
+    fail "RDK X5 source matrix is missing pin name: ${source_name}"
+  rg -Fq -- "$source_revision" "$source_matrix" ||
+    fail "RDK X5 source matrix is missing pin revision: ${source_name}"
+done < <(rg '^RDK_X5_SRCREV_[A-Z0-9_]+ = "' "$release_include")
+
 machine_conf="$layer_dir/conf/machine/rdk-x5.conf"
 [ -f "$machine_conf" ] || fail "RDK X5 machine configuration is missing"
 require_line "$machine_conf" 'PREFERRED_PROVIDER_virtual/kernel = "linux-d-robotics"'

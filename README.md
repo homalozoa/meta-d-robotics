@@ -81,8 +81,10 @@ The accelerator recipes make the compatibility boundary explicit:
 - No global Yocto QA suppression or global legacy-library provider replacement
   is permitted.
 
-`conf/machine/include/rdk-x5-release.inc` is the source-of-truth release and
-source-revision matrix for this layer.
+`conf/machine/include/rdk-x5-release.inc` is the machine-readable source of
+truth.  The reviewed [RDKOS 3.5.0 source and compatibility matrix](docs/release-3.5.0-source-matrix.md)
+maps those pins to recipe versions, license checksums, generated packages, and
+narrow compatibility exceptions.
 
 ## Layer checks
 
