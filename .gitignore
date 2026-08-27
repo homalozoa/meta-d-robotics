@@ -1,0 +1,14 @@
+# Python and shell test by-products
+__pycache__/
+*.py[cod]
+
+# Editor and patch by-products
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+
+# Local BitBake build directories when the layer is used standalone
+build/
+tmp/
