@@ -125,6 +125,22 @@ if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$multimedia_recipe
   fail "RDK X5 multimedia runtime must not bypass binary or dependency QA"
 fi
 
+dnn_recipe="$layer_dir/recipes-d-robotics/dnn/hobot-dnn_3.0.4.bb"
+[ -f "$dnn_recipe" ] || fail "RDK X5 DNN runtime recipe is missing"
+require_line "$dnn_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$dnn_recipe" 'SRCREV_dnn = "${RDK_X5_SRCREV_HOBOT_DNN}"'
+require_line "$dnn_recipe" 'DEPENDS = "hobot-multimedia"'
+require_line "$dnn_recipe" 'RDEPENDS:${PN} += "hobot-multimedia"'
+require_line "$dnn_recipe" 'RDK_X5_PREBUILT_ELF_MAX_GLIBCXX = "3.4.29"'
+require_line "$dnn_recipe" 'SYSROOT_DIRS:append = " /usr/hobot"'
+require_line "$dnn_recipe" 'INSANE_SKIP:${PN} += "libdir"'
+if rg -q '\$\{S\}/x5/usr/(lib/libopencv_world|bin/dnn_server)' "$dnn_recipe"; then
+  fail "RDK X5 DNN runtime must not install the vendor OpenCV or unverified server"
+fi
+if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$dnn_recipe"; then
+  fail "RDK X5 DNN runtime must not bypass binary or dependency QA"
+fi
+
 while IFS= read -r source_revision; do
   source_revision="${source_revision#*\"}"
   source_revision="${source_revision%\"}"
