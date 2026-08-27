@@ -188,6 +188,34 @@ if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$camera_recipe"; t
   fail "RDK X5 camera runtime must not bypass binary or dependency QA"
 fi
 
+camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
+accelerator_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-accelerators.bb"
+[ -f "$camera_group" ] || fail "RDK X5 camera packagegroup is missing"
+[ -f "$accelerator_group" ] || fail "RDK X5 accelerator packagegroup is missing"
+for packagegroup_recipe in "$camera_group" "$accelerator_group"; do
+  require_line "$packagegroup_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+  require_line "$packagegroup_recipe" 'inherit packagegroup'
+done
+for required_entry in \
+  hobot-camera \
+  kernel-module-hobot-mipicsi \
+  kernel-module-hobot-isi-sensor \
+  kernel-module-hobot-lpwm \
+  kernel-module-hobot-vin-vcon; do
+  rg -q "^[[:space:]]*${required_entry}[[:space:]]" "$camera_group" ||
+    fail "RDK X5 camera packagegroup is missing: ${required_entry}"
+done
+for required_entry in \
+  hobot-dnn \
+  kernel-module-bpu-hw-io-x5 \
+  packagegroup-rdk-x5-camera; do
+  rg -q "^[[:space:]]*${required_entry}[[:space:]]" "$accelerator_group" ||
+    fail "RDK X5 accelerator packagegroup is missing: ${required_entry}"
+done
+if rg -q '^[[:space:]]*kernel-modules[[:space:]]|^[[:space:]]*kernel-module-[^[:space:]]*6\.1\.83' "$camera_group" "$accelerator_group"; then
+  fail "RDK X5 accelerator packagegroups must use kernel module providers without a fixed release or broad module set"
+fi
+
 while IFS= read -r source_revision; do
   source_revision="${source_revision#*\"}"
   source_revision="${source_revision%\"}"
