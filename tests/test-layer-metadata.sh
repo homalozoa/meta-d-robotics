@@ -156,6 +156,38 @@ if rg -q 'bpu-hw_io_rt' "$bpu_driver_recipe"; then
   fail "RDK X5 BPU driver must not select the incompatible RT module"
 fi
 
+camera_recipe="$layer_dir/recipes-d-robotics/camera/hobot-camera_3.1.1.bb"
+[ -f "$camera_recipe" ] || fail "RDK X5 camera sensor runtime recipe is missing"
+require_line "$camera_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$camera_recipe" 'SRCREV_camera = "${RDK_X5_SRCREV_HOBOT_CAMERA}"'
+require_line "$camera_recipe" 'SRCREV_sensor = "${RDK_X5_SRCREV_LIBCAM_SENSOR}"'
+require_line "$camera_recipe" 'SRCREV_inc = "${RDK_X5_SRCREV_LIBCAM_INC}"'
+require_line "$camera_recipe" 'SRCREV_dev = "${RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV}"'
+require_line "$camera_recipe" 'SRCREV_tuning = "${RDK_X5_SRCREV_TUNING_JSON}"'
+require_line "$camera_recipe" 'SRCREV_FORMAT = "camera_sensor_inc_dev_tuning"'
+require_line "$camera_recipe" 'B = "${WORKDIR}/build"'
+require_line "$camera_recipe" 'DEPENDS = "hobot-multimedia"'
+require_line "$camera_recipe" 'inherit rdk-x5-prebuilt-elf'
+require_line "$camera_recipe" 'RDK_X5_CAMERA_SENSORS = "imx219 imx415 sc132gs sc230ai"'
+require_line "$camera_recipe" 'RDK_X5_CAMERA_CFLAGS = "${CFLAGS} -std=gnu17 -I${UNPACKDIR}/dev/usr/include -ffile-prefix-map=${UNPACKDIR}=/usr/src/debug/${PN}/${PV}"'
+require_line "$camera_recipe" 'do_compile[cleandirs] = "${B}"'
+require_line "$camera_recipe" 'INSANE_SKIP:${PN} += "libdir"'
+if ! rg -Fq -- 'CFLAGS_STATIC="rcs"' "$camera_recipe"; then
+  fail "RDK X5 camera runtime must create its serial helper deterministically"
+fi
+if ! rg -Fq -- '${RECIPE_SYSROOT}/usr/hobot/lib/libalog.so.1' "$camera_recipe"; then
+  fail "RDK X5 camera runtime must explicitly link its vendor logging ABI"
+fi
+if ! rg -Fq -- 'LDFLAGS="${LDFLAGS} -shared -Wl,-z,defs' "$camera_recipe"; then
+  fail "RDK X5 camera runtime must retain Yocto linker hardening flags"
+fi
+if rg -q 'debian/usr/hobot/lib/\*|libevent' "$camera_recipe"; then
+  fail "RDK X5 camera runtime must not install the vendor event stack or a globbed vendor libdir"
+fi
+if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$camera_recipe"; then
+  fail "RDK X5 camera runtime must not bypass binary or dependency QA"
+fi
+
 while IFS= read -r source_revision; do
   source_revision="${source_revision#*\"}"
   source_revision="${source_revision%\"}"
