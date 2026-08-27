@@ -32,6 +32,9 @@ elf_audit_test="$layer_dir/tests/test_audit_prebuilt_elf.py"
 require_line "$elf_audit_class" 'inherit python3native'
 require_line "$elf_audit_class" 'DEPENDS:append = " binutils-native"'
 require_line "$elf_audit_class" 'addtask rdk_x5_prebuilt_elf_audit after do_install before do_package'
+if ! rg -Fq -- '--readelf ${READELF}' "$elf_audit_class"; then
+  fail "RDK X5 prebuilt ELF audit must use the target readelf wrapper"
+fi
 if ! rg -Fq -- 'ld-linux-aarch64.so.1=glibc-dynamic-loader' "$elf_audit_class"; then
   fail "RDK X5 prebuilt ELF audit must document its dynamic-loader allowance"
 fi
@@ -104,6 +107,22 @@ require_line "$boot_cmd" '        booti ${kernel_addr_r} - ${fdt_addr_r}'
 require_line "$boot_config" 'exit 0'
 if rg -n -i '(^|[;[:space:]])(sf|nand|mtd|mmc)[[:space:]]+(erase|write)' "$boot_cmd"; then
   fail "RDK X5 boot command must not write persistent storage"
+fi
+
+multimedia_recipe="$layer_dir/recipes-d-robotics/multimedia/hobot-multimedia_3.0.5.bb"
+[ -f "$multimedia_recipe" ] || fail "RDK X5 multimedia runtime recipe is missing"
+require_line "$multimedia_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$multimedia_recipe" 'SRCREV_multimedia = "${RDK_X5_SRCREV_HOBOT_MULTIMEDIA}"'
+require_line "$multimedia_recipe" 'DEPENDS = "cjson"'
+require_line "$multimedia_recipe" 'inherit rdk-x5-prebuilt-elf'
+require_line "$multimedia_recipe" 'RDK_X5_PREBUILT_ELF_MAX_GLIBC = "2.34"'
+require_line "$multimedia_recipe" 'SYSROOT_DIRS:append = " /usr/hobot"'
+require_line "$multimedia_recipe" 'INSANE_SKIP:${PN} += "libdir"'
+if rg -q 'libcjson\.so\.1\.7\.15|debian/usr/hobot/lib/\*' "$multimedia_recipe"; then
+  fail "RDK X5 multimedia runtime must use the system cJSON provider and explicit vendor files"
+fi
+if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$multimedia_recipe"; then
+  fail "RDK X5 multimedia runtime must not bypass binary or dependency QA"
 fi
 
 while IFS= read -r source_revision; do
