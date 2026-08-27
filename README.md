@@ -38,6 +38,39 @@ normal image build cannot modify the BSP checkout.  The RDK X5 image graph is
 pinned to the Wrynose-compatible ROS 2 Jazzy stack; selecting another ROS
 release is intentionally rejected.
 
+## Accelerator runtime
+
+The base RDK X5 image stays small and is suitable for board bring-up.  Build
+the separately isolated accelerator image when the board needs the pinned BPU,
+DNN, multimedia, and camera runtime:
+
+```sh
+cd /path/to/meta-saha
+SAHA_META_D_ROBOTICS_DIR=/path/to/meta-d-robotics \
+SAHA_X5_ACCELERATORS=1 \
+  ./scripts/saha-build rdk-x5
+```
+
+`meta-saha` deliberately uses `build/rdk-x5-accelerators` for this mode, so
+the accelerator build cannot change a previously built base image.  The image
+contains the selected D-Robotics runtime libraries under `/usr/hobot`, the
+`bpu_hw_io_x5` module and its automatic-load configuration, and sensor plugins
+for `imx219`, `imx415`, `sc132gs`, and `sc230ai`.  It is not a generic camera
+enablement bundle; use only the matching board hardware and tuning data.
+
+The accelerator recipes make the compatibility boundary explicit:
+
+- Every vendor source is pinned in `rdk-x5-release.inc` to the RDKOS 3.5.0
+  release contract.
+- The BPU module is Kbuild-linked only against Linux 6.1.83; a different
+  kernel version is a fatal configuration error rather than a best-effort
+  module install.
+- The module's stable metapackage pulls its generated, versioned kernel-module
+  closure, including `bpu_framework` and `bpu_cores`.
+- Prebuilt AArch64 ELF files are audited for loader, dependency, symbol-version,
+  and RPATH compatibility before packaging.  The layer does not mask generic
+  binary or file-dependency QA failures.
+
 ## Compatibility policy
 
 - Central release metadata owns every RDK X5 source revision.
@@ -48,8 +81,8 @@ release is intentionally rejected.
 - No global Yocto QA suppression or global legacy-library provider replacement
   is permitted.
 
-See `docs/` for the generated release/source matrix and boot contract once
-those recipes are introduced.
+`conf/machine/include/rdk-x5-release.inc` is the source-of-truth release and
+source-revision matrix for this layer.
 
 ## Layer checks
 
