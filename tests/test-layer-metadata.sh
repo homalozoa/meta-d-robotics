@@ -21,6 +21,20 @@ layer_conf="$layer_dir/conf/layer.conf"
 require_line "$layer_conf" 'BBFILE_COLLECTIONS += "d-robotics"'
 require_line "$layer_conf" 'LAYERDEPENDS_d-robotics = "core"'
 require_line "$layer_conf" 'LAYERSERIES_COMPAT_d-robotics = "wrynose"'
+require_line "$layer_conf" 'D_ROBOTICS_LAYERDIR := "${LAYERDIR}"'
+
+elf_audit="$layer_dir/scripts/audit-prebuilt-elf.py"
+elf_audit_class="$layer_dir/classes-recipe/rdk-x5-prebuilt-elf.bbclass"
+elf_audit_test="$layer_dir/tests/test_audit_prebuilt_elf.py"
+[ -f "$elf_audit" ] || fail "RDK X5 prebuilt ELF audit script is missing"
+[ -f "$elf_audit_class" ] || fail "RDK X5 prebuilt ELF audit class is missing"
+[ -f "$elf_audit_test" ] || fail "RDK X5 prebuilt ELF audit tests are missing"
+require_line "$elf_audit_class" 'inherit python3native'
+require_line "$elf_audit_class" 'DEPENDS:append = " binutils-native"'
+require_line "$elf_audit_class" 'addtask rdk_x5_prebuilt_elf_audit after do_install before do_package'
+if ! rg -Fq -- 'ld-linux-aarch64.so.1=glibc-dynamic-loader' "$elf_audit_class"; then
+  fail "RDK X5 prebuilt ELF audit must document its dynamic-loader allowance"
+fi
 
 release_include="$layer_dir/conf/machine/include/rdk-x5-release.inc"
 [ -f "$release_include" ] || fail "RDK X5 release metadata is missing"
