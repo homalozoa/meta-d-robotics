@@ -29,12 +29,14 @@ only when a recipe requires them.
 The supported host entry point lives in `meta-saha`:
 
 ```sh
-cd /home/homalozoa/yocto/meta-saha
-./scripts/saha-build rdk-x5
+cd /path/to/meta-saha
+SAHA_META_D_ROBOTICS_DIR=/path/to/meta-d-robotics ./scripts/saha-build rdk-x5
 ```
 
-Set `SAHA_D_ROBOTICS_DIR` if this layer is not located in the workspace's
-default `x5_flash/meta-d-robotics` path.
+`meta-saha` mounts `SAHA_META_D_ROBOTICS_DIR` read-only at build time, so a
+normal image build cannot modify the BSP checkout.  The RDK X5 image graph is
+pinned to the Wrynose-compatible ROS 2 Jazzy stack; selecting another ROS
+release is intentionally rejected.
 
 ## Compatibility policy
 
