@@ -45,7 +45,7 @@ do_rdk_x5_prebuilt_elf_audit() {
     fi
 
     ${PYTHON} ${D_ROBOTICS_LAYERDIR}/scripts/audit-prebuilt-elf.py \
-        --readelf ${STAGING_BINDIR_NATIVE}/readelf \
+        --readelf ${READELF} \
         --report ${RDK_X5_PREBUILT_ELF_REPORT} \
         ${audit_args}
 }
