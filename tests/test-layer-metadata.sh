@@ -141,6 +141,21 @@ if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$dnn_recipe"; then
   fail "RDK X5 DNN runtime must not bypass binary or dependency QA"
 fi
 
+bpu_driver_recipe="$layer_dir/recipes-kernel/modules/hobot-bpu-driver_3.5.0.bb"
+[ -f "$bpu_driver_recipe" ] || fail "RDK X5 BPU driver recipe is missing"
+require_line "$bpu_driver_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$bpu_driver_recipe" 'SRCREV_drivers = "${RDK_X5_SRCREV_HOBOT_DRIVERS}"'
+require_line "$bpu_driver_recipe" 'inherit module rdk-x5-prebuilt-elf'
+require_line "$bpu_driver_recipe" 'KERNEL_MODULE_AUTOLOAD += "bpu_hw_io_x5"'
+require_line "$bpu_driver_recipe" '    if [ "${KERNEL_VERSION}" != "${RDK_X5_KERNEL_VERSION}" ]; then'
+if ! rg -Fq -- 'M=${S}/bpu-hw_io' "$bpu_driver_recipe"; then
+  fail "RDK X5 BPU driver must build the standard hardware I/O module"
+fi
+require_line "$bpu_driver_recipe" '        ${D}${nonarch_base_libdir}/modules/${KERNEL_VERSION}/kernel/drivers/soc/hobot/bpu/hw_io/bpu_hw_io_x5.ko'
+if rg -q 'bpu-hw_io_rt' "$bpu_driver_recipe"; then
+  fail "RDK X5 BPU driver must not select the incompatible RT module"
+fi
+
 while IFS= read -r source_revision; do
   source_revision="${source_revision#*\"}"
   source_revision="${source_revision%\"}"
