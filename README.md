@@ -35,6 +35,19 @@ RNDIS, `u_ether`, and `libcomposite` module closure enters the image.  The
 official mass-storage function is intentionally disabled so connecting the
 board cannot expose a writable or synthetic disk to the host.
 
+## USB host Ethernet
+
+The board's USB host ports support common Realtek RTL8150/RTL8152/RTL8153,
+ASIX AX8817x/AX88179, LAN78xx, SMSC75xx/95xx, Davicom, CoreChips, MosChip,
+SR9700/SR9800, CDC Ethernet/EEM/NCM, and RNDIS adapters.  The recipe names only
+the generated module roots from the pinned Linux 6.1.83 build; it does not pull
+the broad `kernel-modules` package.
+
+systemd-networkd requests DHCP and accepts IPv6 router advertisements only for
+Ethernet links whose udev bus property is USB.  Those links do not delay
+`network-online.target`, and the earlier board-specific `eth0`, `usb0`, and
+`usb1` profiles retain precedence.
+
 ## Onboard Wi-Fi and Bluetooth
 
 The machine installs only the RDKOS 3.5.0 AIC8800D80 firmware selected for the

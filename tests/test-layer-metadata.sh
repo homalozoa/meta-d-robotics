@@ -76,7 +76,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux hobot-qos"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget rdk-x5-usb-ethernet hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux hobot-qos"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -256,6 +256,42 @@ fi
 if ! rg -Fq -- 'CONFIG_DIR=/etc/hobot-usb-gadget' \
     "$usb_gadget_files/0001-usb-gadget-make-launcher-portable-to-yocto.patch"; then
   fail "RDK X5 USB gadget patch must use a systemd-safe configuration path"
+fi
+
+usb_host_recipe="$layer_dir/recipes-d-robotics/usb/rdk-x5-usb-ethernet_1.0.bb"
+usb_host_network="$layer_dir/recipes-d-robotics/usb/files/25-rdk-x5-usb-ethernet.network"
+[ -f "$usb_host_recipe" ] || fail "RDK X5 USB host Ethernet recipe is missing"
+[ -f "$usb_host_network" ] || fail "RDK X5 USB host Ethernet network policy is missing"
+require_line "$usb_host_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$usb_host_recipe" 'S = "${UNPACKDIR}"'
+for usb_host_module in \
+  kernel-module-asix \
+  kernel-module-ax88179-178a \
+  kernel-module-cdc-eem \
+  kernel-module-cdc-ether \
+  kernel-module-cdc-ncm \
+  kernel-module-ch9200 \
+  kernel-module-dm9601 \
+  kernel-module-lan78xx \
+  kernel-module-mcs7830 \
+  kernel-module-r8152 \
+  kernel-module-r8153-ecm \
+  kernel-module-rndis-host \
+  kernel-module-rtl8150 \
+  kernel-module-smsc75xx \
+  kernel-module-smsc95xx \
+  kernel-module-sr9700 \
+  kernel-module-sr9800 \
+  kernel-module-usbnet; do
+  rg -q "^[[:space:]]*${usb_host_module}[[:space:]]*\\\\$" "$usb_host_recipe" ||
+    fail "RDK X5 USB host Ethernet recipe is missing: ${usb_host_module}"
+done
+require_line "$usb_host_network" 'Type=ether'
+require_line "$usb_host_network" 'Property=ID_BUS=usb'
+require_line "$usb_host_network" 'RequiredForOnline=no'
+require_line "$usb_host_network" 'DHCP=yes'
+if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$usb_host_recipe"; then
+  fail "RDK X5 USB host Ethernet must not pull the broad kernel-modules package"
 fi
 
 wifi_recipe="$layer_dir/recipes-d-robotics/wireless/hobot-wifi_3.0.3.bb"

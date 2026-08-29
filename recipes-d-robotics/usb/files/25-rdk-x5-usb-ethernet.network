@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+
+[Match]
+Type=ether
+Property=ID_BUS=usb
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+DHCP=yes
+IPv6AcceptRA=yes
