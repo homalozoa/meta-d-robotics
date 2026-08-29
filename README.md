@@ -52,6 +52,15 @@ an empty, writable wlan0 configuration at
 contract (`/dev/ttyS5`, 1.5 Mbaud, no flow control); systemd keeps `hciattach`
 in the foreground and waits for `hci0` before allowing BlueZ to start.
 
+## Core board peripherals
+
+The base machine explicitly installs the module roots for the HPU3501 RTC,
+heartbeat status LED, TCAN4x5x CAN FD controller, and DT-declared spidev
+endpoints.  It also includes SocketCAN, I2C, GPIO, and `hwclock` tools so those
+interfaces can be tested without an additional debug image.  The dependency
+list is deliberately explicit; the layer never pulls the broad
+`kernel-modules` package merely to make a device appear.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

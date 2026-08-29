@@ -40,12 +40,12 @@ enter an image until a separately reviewed recipe names that pin.
 | `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Installs the official RNDIS+ECM config and launcher with a portability-only patch, exact module roots, and a Yocto-native systemd/networkd policy.  USB mass storage remains excluded. |
 | `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Selects only the official AIC8800D80 firmware used by SDIO `C8A1:0082`, plus version-neutral AIC/cfg80211 and ttyS5 Bluetooth module roots.  Broadcom, Realtek, Debian host libraries, and credentials are excluded. |
 
-`packagegroup-rdk-x5-camera` and `packagegroup-rdk-x5-accelerators` are
-metadata-only `MIT` packagegroups with implicit recipe version `1.0`; they
-contain no fetched source or license file checksum.  Both are `rdk-x5`-only.
-The camera group names only the roots of the kernel-module dependency graph;
-the BPU group names the stable driver metapackage, not a guessed kernel-version
-package name.
+`packagegroup-rdk-x5-camera`, `packagegroup-rdk-x5-accelerators`, and
+`rdk-x5-peripherals` are metadata/local-policy-only `MIT` recipes with version
+`1.0`; they contain no fetched vendor source.  All are `rdk-x5`-only.  The
+camera and peripheral recipes name only roots of the kernel-module dependency
+graph, and the BPU group names the stable driver metapackage rather than a
+guessed kernel-version package name.
 
 ## Complete RDKOS pin inventory
 

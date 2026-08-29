@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -316,6 +316,37 @@ if rg -q '^[[:space:]]*network=' "$wifi_files/wpa_supplicant-wlan0.conf"; then
   fail "RDK X5 image must not embed default Wi-Fi network credentials"
 fi
 sh -n "$wifi_files/wait-for-hci0" || fail "RDK X5 Bluetooth readiness helper has invalid shell syntax"
+
+peripherals_recipe="$layer_dir/recipes-d-robotics/board/rdk-x5-peripherals_1.0.bb"
+peripherals_modules="$layer_dir/recipes-d-robotics/board/files/30-rdk-x5-peripherals.conf"
+[ -f "$peripherals_recipe" ] || fail "RDK X5 core peripherals recipe is missing"
+[ -f "$peripherals_modules" ] || fail "RDK X5 core peripherals module policy is missing"
+require_line "$peripherals_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$peripherals_recipe" 'S = "${UNPACKDIR}"'
+for peripheral_dependency in \
+  can-utils \
+  i2c-tools \
+  libgpiod-tools \
+  util-linux-hwclock \
+  kernel-module-can-raw \
+  kernel-module-leds-gpio \
+  kernel-module-rtc-hpu3501 \
+  kernel-module-spidev \
+  kernel-module-tcan4x5x; do
+  rg -q "^[[:space:]]*${peripheral_dependency}[[:space:]]*\\\\$" "$peripherals_recipe" ||
+    fail "RDK X5 core peripherals recipe is missing: $peripheral_dependency"
+done
+for peripheral_module in \
+  leds_gpio \
+  rtc_hpu3501 \
+  spidev \
+  tcan4x5x \
+  can_raw; do
+  require_line "$peripherals_modules" "$peripheral_module"
+done
+if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$peripherals_recipe"; then
+  fail "RDK X5 core peripherals must not pull the broad kernel-modules package"
+fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
 accelerator_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-accelerators.bb"
