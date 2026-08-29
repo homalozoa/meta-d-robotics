@@ -35,6 +35,23 @@ RNDIS, `u_ether`, and `libcomposite` module closure enters the image.  The
 official mass-storage function is intentionally disabled so connecting the
 board cannot expose a writable or synthetic disk to the host.
 
+## Onboard Wi-Fi and Bluetooth
+
+The machine installs only the RDKOS 3.5.0 AIC8800D80 firmware selected for the
+RDK X5 onboard `C8A1:0082` SDIO function.  The matching `aic8800_bsp` and
+`aic8800_fdrv` modules load in dependency order, and wlan0 uses
+systemd-networkd DHCP without delaying `network-online.target`.  The official
+`switch_antenna` utility defaults boards 301/302 to their PCB trace antenna;
+set `HOBOT_WIFI_ANTENNA=cable` in `/etc/default/hobot-wifi` only when the RF
+connector has an external antenna.
+
+No SSID or key is baked into the image.  `hobot-wpa-supplicant.service` starts
+an empty, writable wlan0 configuration at
+`/etc/wpa_supplicant/wpa_supplicant-wlan0.conf`, which can be populated with
+`wpa_cli` or during provisioning.  Bluetooth follows the official X5 UART
+contract (`/dev/ttyS5`, 1.5 Mbaud, no flow control); systemd keeps `hciattach`
+in the foreground and waits for `hci0` before allowing BlueZ to start.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

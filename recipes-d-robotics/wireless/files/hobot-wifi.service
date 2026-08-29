@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=D-Robotics RDK X5 Wi-Fi antenna and link setup
+After=systemd-modules-load.service
+Before=network-pre.target
+ConditionPathExists=/sys/class/net/wlan0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=HOBOT_WIFI_ANTENNA=trace
+EnvironmentFile=-/etc/default/hobot-wifi
+ExecStart=/usr/bin/switch_antenna ${HOBOT_WIFI_ANTENNA}
+ExecStartPost=/usr/sbin/ip link set dev wlan0 up
+ExecStop=-/usr/sbin/ip link set dev wlan0 down
+
+[Install]
+WantedBy=multi-user.target

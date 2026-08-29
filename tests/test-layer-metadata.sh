@@ -53,7 +53,8 @@ for matrix_entry in \
   '| `hobot-dnn` and `hobot-dnn-dev` | `3.0.4` | `RDK_X5_SRCREV_HOBOT_DNN` |' \
   '| `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` |' \
   '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |' \
-  '| `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` |'; do
+  '| `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` |' \
+  '| `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` |'; do
   rg -Fq -- "$matrix_entry" "$source_matrix" ||
     fail "RDK X5 source matrix is missing recipe entry: ${matrix_entry}"
 done
@@ -74,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -255,6 +256,66 @@ if ! rg -Fq -- 'CONFIG_DIR=/etc/hobot-usb-gadget' \
     "$usb_gadget_files/0001-usb-gadget-make-launcher-portable-to-yocto.patch"; then
   fail "RDK X5 USB gadget patch must use a systemd-safe configuration path"
 fi
+
+wifi_recipe="$layer_dir/recipes-d-robotics/wireless/hobot-wifi_3.0.3.bb"
+wifi_files="$layer_dir/recipes-d-robotics/wireless/files"
+[ -f "$wifi_recipe" ] || fail "RDK X5 onboard wireless recipe is missing"
+require_line "$wifi_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$wifi_recipe" 'SRCREV_wifi = "${RDK_X5_SRCREV_HOBOT_WIFI}"'
+require_line "$wifi_recipe" 'inherit systemd'
+require_line "$wifi_recipe" '    kernel-module-aic8800-bsp \'
+require_line "$wifi_recipe" '    kernel-module-aic8800-fdrv \'
+require_line "$wifi_recipe" '    kernel-module-hci-uart \'
+for aic_firmware in \
+  aic_powerlimit_8800d80.txt \
+  aic_userconfig_8800d80.txt \
+  fmacfw_8800d80_h_u02.bin \
+  fmacfw_8800d80_h_u02_ipc.bin \
+  fmacfw_8800d80_u02.bin \
+  fmacfw_8800d80_u02_ipc.bin \
+  fmacfwbt_8800d80_h_u02.bin \
+  fmacfwbt_8800d80_u02.bin \
+  fw_adid_8800d80_u02.bin \
+  fw_patch_8800d80_u02.bin \
+  fw_patch_8800d80_u02_ext0.bin \
+  fw_patch_8800d80_u04.bin \
+  fw_patch_table_8800d80_u02.bin \
+  fw_patch_table_8800d80_u04.bin \
+  lmacfw_rf_8800d80_u02.bin; do
+  rg -q "^[[:space:]]*${aic_firmware}[[:space:]]*\\\\$" "$wifi_recipe" ||
+    fail "RDK X5 wireless recipe is missing AIC8800D80 firmware: $aic_firmware"
+done
+if rg -q 'debian/(lib|sbin)|firmware/(bcm|brcm|rtl)|debian/vendor/etc/firmware/\*' "$wifi_recipe"; then
+  fail "RDK X5 wireless recipe must not import unrelated vendor binaries or firmware"
+fi
+for wifi_source_file in \
+  20-rdk-x5-wireless.conf \
+  30-rdk-x5-wlan0.network \
+  hobot-wifi.default \
+  hobot-wifi.service \
+  hobot-wpa-supplicant.service \
+  hobot-bluetooth.service \
+  wait-for-hci0 \
+  wpa_supplicant-wlan0.conf; do
+  [ -f "$wifi_files/$wifi_source_file" ] ||
+    fail "RDK X5 wireless integration file is missing: $wifi_source_file"
+done
+require_line "$wifi_files/20-rdk-x5-wireless.conf" 'aic8800_bsp'
+require_line "$wifi_files/20-rdk-x5-wireless.conf" 'aic8800_fdrv'
+require_line "$wifi_files/20-rdk-x5-wireless.conf" 'hci_uart'
+require_line "$wifi_files/30-rdk-x5-wlan0.network" 'Name=wlan0'
+require_line "$wifi_files/30-rdk-x5-wlan0.network" 'RequiredForOnline=no'
+require_line "$wifi_files/30-rdk-x5-wlan0.network" 'DHCP=yes'
+require_line "$wifi_files/hobot-wifi.default" 'HOBOT_WIFI_ANTENNA=trace'
+require_line "$wifi_files/hobot-wifi.service" 'ExecStart=/usr/bin/switch_antenna ${HOBOT_WIFI_ANTENNA}'
+require_line "$wifi_files/hobot-wpa-supplicant.service" 'ExecStart=/usr/sbin/wpa_supplicant -u -Dnl80211 -iwlan0 -c/etc/wpa_supplicant/wpa_supplicant-wlan0.conf'
+require_line "$wifi_files/hobot-bluetooth.service" 'ExecStart=/usr/bin/hciattach -n -s 1500000 /dev/ttyS5 any 1500000 noflow'
+require_line "$wifi_files/hobot-bluetooth.service" 'ExecStartPost=/usr/libexec/hobot-wifi/wait-for-hci0'
+require_line "$wifi_files/wpa_supplicant-wlan0.conf" 'update_config=1'
+if rg -q '^[[:space:]]*network=' "$wifi_files/wpa_supplicant-wlan0.conf"; then
+  fail "RDK X5 image must not embed default Wi-Fi network credentials"
+fi
+sh -n "$wifi_files/wait-for-hci0" || fail "RDK X5 Bluetooth readiness helper has invalid shell syntax"
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
 accelerator_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-accelerators.bb"

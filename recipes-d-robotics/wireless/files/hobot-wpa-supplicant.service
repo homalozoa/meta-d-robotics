@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=WPA supplicant for the RDK X5 onboard Wi-Fi interface
+Requires=hobot-wifi.service
+After=hobot-wifi.service dbus.service
+Before=network.target
+ConditionPathExists=/sys/class/net/wlan0
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/wpa_supplicant -u -Dnl80211 -iwlan0 -c/etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

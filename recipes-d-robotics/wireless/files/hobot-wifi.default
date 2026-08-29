@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# RDK X5 boards 301/302 default to the onboard PCB antenna.  Set this to
+# "cable" only when an external antenna is attached to the RF connector.
+HOBOT_WIFI_ANTENNA=trace

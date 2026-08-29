@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=D-Robotics RDK X5 UART Bluetooth transport
+Wants=dev-ttyS5.device hobot-wifi.service
+After=dev-ttyS5.device systemd-modules-load.service hobot-wifi.service
+Before=bluetooth.service
+ConditionPathExists=/dev/ttyS5
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/modprobe hci_uart
+ExecStart=/usr/bin/hciattach -n -s 1500000 /dev/ttyS5 any 1500000 noflow
+ExecStartPost=/usr/libexec/hobot-wifi/wait-for-hci0
+Restart=on-failure
+RestartSec=2s
+TimeoutStartSec=40s
+
+[Install]
+WantedBy=multi-user.target

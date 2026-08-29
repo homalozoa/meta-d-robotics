@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Match]
+Name=wlan0
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+DHCP=yes
+IPv6AcceptRA=yes

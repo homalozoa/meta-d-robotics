@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+
+remaining=30
+while [ "$remaining" -gt 0 ]; do
+    if [ -d /sys/class/bluetooth/hci0 ]; then
+        rfkill unblock bluetooth || :
+        exit 0
+    fi
+
+    sleep 1
+    remaining=$((remaining - 1))
+done
+
+echo "Timed out waiting for Bluetooth controller hci0" >&2
+exit 1

@@ -38,6 +38,7 @@ enter an image until a separately reviewed recipe names that pin.
 | `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Kbuild must see exactly Linux `6.1.83`; a different kernel version is fatal.  The metapackage pulls the generated versioned module closure. |
 | `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` | `Apache-2.0`; camera `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  The narrow `/usr/hobot/lib` `libdir` exception preserves the sensor ABI.  `-std=gnu17` prevents a GLIBC 2.38 C23 symbol dependency; selected plugins are audited at GLIBC `2.34`. |
 | `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Installs the official RNDIS+ECM config and launcher with a portability-only patch, exact module roots, and a Yocto-native systemd/networkd policy.  USB mass storage remains excluded. |
+| `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Selects only the official AIC8800D80 firmware used by SDIO `C8A1:0082`, plus version-neutral AIC/cfg80211 and ttyS5 Bluetooth module roots.  Broadcom, Realtek, Debian host libraries, and credentials are excluded. |
 
 `packagegroup-rdk-x5-camera` and `packagegroup-rdk-x5-accelerators` are
 metadata-only `MIT` packagegroups with implicit recipe version `1.0`; they
@@ -65,7 +66,7 @@ source set.  Names correspond to the official `D-Robotics/x5-*` projects.
 | `RDK_X5_SRCREV_HOBOT_DTB` | `x5-hobot-dtb` | `c83942bbefce2c040706076093475b51a6850678` | Release provenance; kernel deploys the selected DTBs |
 | `RDK_X5_SRCREV_HOBOT_BOOT` | `x5-hobot-boot` | `3dfb58b2dab0dd0e5097b0f71442c5a65b9d3740` | Release provenance; not packaged |
 | `RDK_X5_SRCREV_HOBOT_CONFIGS` | `x5-hobot-configs` | `9dbcefbb3b2ea4d289ca08fa0fb2338180421cef` | Release provenance; not packaged |
-| `RDK_X5_SRCREV_HOBOT_WIFI` | `x5-hobot-wifi` | `052c2b53e31c69dd068e6632a2474746da6ebe8e` | Release provenance; not packaged |
+| `RDK_X5_SRCREV_HOBOT_WIFI` | `x5-hobot-wifi` | `052c2b53e31c69dd068e6632a2474746da6ebe8e` | `hobot-wifi` |
 | `RDK_X5_SRCREV_HOBOT_AUDIO_CONFIG` | `x5-hobot-audio-config` | `c26ed5068d66ac3045e586156ac6127b531ed37d` | Release provenance; not packaged |
 | `RDK_X5_SRCREV_HOBOT_UTILS` | `x5-hobot-utils` | `d266754d9ac357eb3615ce8360253039607ba040` | `hobot-usb-gadget` |
 | `RDK_X5_SRCREV_HOBOT_IO` | `x5-hobot-io` | `e8b84efd72eaaa48a796b3e54db63e59d3807226` | Release provenance; not packaged |
