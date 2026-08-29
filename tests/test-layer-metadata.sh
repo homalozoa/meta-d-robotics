@@ -76,7 +76,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget rdk-x5-usb-ethernet rdk-x5-usb-peripherals hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux hobot-qos"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget rdk-x5-usb-ethernet rdk-x5-usb-peripherals rdk-x5-usb-can hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux hobot-qos"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -313,6 +313,25 @@ for usb_peripheral_dependency in \
 done
 if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$usb_peripherals_recipe"; then
   fail "RDK X5 USB peripherals must not pull the broad kernel-modules package"
+fi
+
+usb_can_recipe="$layer_dir/recipes-d-robotics/usb/rdk-x5-usb-can_1.0.bb"
+[ -f "$usb_can_recipe" ] || fail "RDK X5 USB-CAN recipe is missing"
+require_line "$usb_can_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$usb_can_recipe" 'PACKAGE_ARCH = "${MACHINE_ARCH}"'
+require_line "$usb_can_recipe" 'ALLOW_EMPTY:${PN} = "1"'
+for usb_can_dependency in \
+  can-utils \
+  can-utils-slcan \
+  kernel-module-ems-usb \
+  kernel-module-gs-usb \
+  kernel-module-peak-usb \
+  kernel-module-slcan; do
+  rg -q "^[[:space:]]*${usb_can_dependency}[[:space:]]*\\\\$" "$usb_can_recipe" ||
+    fail "RDK X5 USB-CAN recipe is missing: ${usb_can_dependency}"
+done
+if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$usb_can_recipe"; then
+  fail "RDK X5 USB-CAN must not pull the broad kernel-modules package"
 fi
 
 wifi_recipe="$layer_dir/recipes-d-robotics/wireless/hobot-wifi_3.0.3.bb"

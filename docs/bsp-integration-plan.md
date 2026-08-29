@@ -32,6 +32,7 @@ and optional hardware surfaces remain independently testable.
 | USB device networking | RNDIS + ECM, `0525:a4a2`, device address `192.168.128.10/24` | Implemented without mass storage | Host enumerates both functions; DHCP-independent ping over `usb0`; clean restart and shutdown |
 | USB host Ethernet | USB CDC/RNDIS plus common Realtek, ASIX, LAN78xx, SMSC, Davicom, CoreChips, MosChip and SR adapters | Curated version-neutral module roots and USB-only networkd DHCP policy implemented | Hotplug at least one RTL8152/8153 and one CDC/ASIX adapter; link, DHCP, ping, unplug/replug and reboot tests |
 | USB serial and UVC | CDC ACM, CH341, CP210x, FTDI, PL2303 and USB Video Class | Curated Linux 6.1.83 module roots plus Wrynose `v4l2-ctl`/`media-ctl` diagnostics implemented | Hotplug representative serial adapters; stable `/dev/serial/by-id`, bounded loopback; enumerate a UVC camera and capture one frame |
+| USB and serial-line CAN | candleLight/GS_USB, PEAK, EMS and SLCAN adapters | Curated Linux 6.1.83 SocketCAN module roots and matching Wrynose tools implemented; no interface is configured automatically | Hotplug one GS_USB device; explicit bitrate, internal or isolated-bus loopback, unplug/replug; SLCAN only on a known serial adapter |
 | Wi-Fi and Bluetooth | AIC8800D80 SDIO firmware/driver and UART5 Bluetooth at 1.5 Mbaud, no flow control | Implemented | `wlan0` scan, `hci0` readiness, rfkill and BlueZ checks |
 | Core board peripherals | HPU3501 RTC, ACT LED, TCAN4x5x, DT-declared SPI, I2C/GPIO tools | Implemented | RTC read, ACT trigger, SPI nodes, I2C enumeration, CAN loopback without external traffic |
 | Onboard audio | DesignWare I2S, ES8326 codec, duplex sound-card drivers | Implemented; hardware validation pending | ALSA cards/PCMs enumerate; mixer read; bounded capture/playback tests with safe levels |
@@ -43,8 +44,8 @@ and optional hardware surfaces remain independently testable.
 
 ## Delivery order
 
-1. Validate common USB serial adapters, UVC cameras, and USB Ethernet adapters
-   on the actual host ports; keep cellular modem stacks opt-in.
+1. Validate common USB serial, UVC, Ethernet, and USB-CAN adapters on the
+   actual host ports; keep cellular modem stacks opt-in.
 2. Validate the onboard audio module and ALSA diagnostic package on hardware.
 3. Validate the base HDMI/DRM/2D display closure and DRM diagnostics.
 4. Validate the native camera, image-processing, VPU and JPU module closure;

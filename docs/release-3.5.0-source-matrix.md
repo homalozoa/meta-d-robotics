@@ -45,15 +45,17 @@ enter an image until a separately reviewed recipe names that pin.
 
 `packagegroup-rdk-x5-camera`, `packagegroup-rdk-x5-accelerators`,
 `rdk-x5-peripherals`, `rdk-x5-audio`, `rdk-x5-display`,
-`rdk-x5-media-modules`, `rdk-x5-pinmux`, and `rdk-x5-usb-ethernet` are
+`rdk-x5-media-modules`, `rdk-x5-pinmux`, `rdk-x5-usb-ethernet`,
+`rdk-x5-usb-peripherals`, and `rdk-x5-usb-can` are
 metadata/local-policy-only `MIT` recipes with version `1.0`; they contain no
 fetched vendor source.  All are `rdk-x5`-only.  The camera, peripheral, audio,
 display, and native-media recipes name only roots of the kernel-module
 dependency graph, and the BPU group names the stable driver metapackage rather
 than a guessed kernel-version package name.  `rdk-x5-pinmux` implements the
 reviewed RDKOS conflict map without copying the vendor's unguarded in-place
-DTB write policy.  `rdk-x5-usb-ethernet` selects generated module providers
-from the pinned kernel and adds only a USB-matched networkd policy.
+DTB write policy.  The USB support recipes select generated module providers
+from the pinned kernel; the Ethernet recipe alone adds a USB-matched networkd
+policy, while serial, UVC, and CAN devices remain modalias- or operator-driven.
 
 The `libdrm_%.bbappend` creates an RDK-X5-only `libdrm-modetest` split from
 Wrynose's maintained libdrm source.  This replaces the prebuilt diagnostic in

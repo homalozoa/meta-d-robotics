@@ -62,6 +62,15 @@ remain separately selectable; adding UVC support does not switch that policy.
 Cellular modem protocols and device-specific firmware remain opt-in rather
 than being pulled into every board image.
 
+## USB-CAN adapters
+
+The base machine also carries the pinned-kernel SocketCAN drivers for
+candleLight/GS_USB-compatible devices (including common CANable firmware),
+PEAK-System USB adapters, EMS USB adapters, and serial-line CAN.  The matching
+`can-utils` and SLCAN programs are available for diagnostics.  USB adapters
+load by modalias; SLCAN stays inactive until an operator explicitly attaches a
+known serial port, so booting the image never transmits on a CAN bus.
+
 ## Onboard Wi-Fi and Bluetooth
 
 The machine installs only the RDKOS 3.5.0 AIC8800D80 firmware selected for the
