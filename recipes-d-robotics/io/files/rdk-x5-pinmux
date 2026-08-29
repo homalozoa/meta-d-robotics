@@ -1,0 +1,684 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+
+"""Guarded RDK X5 peripheral and device-tree overlay configuration."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+PERIPHERALS = (
+    "i2c0",
+    "i2c1",
+    "i2c5",
+    "i2s1",
+    "spi1",
+    "spi2",
+    "serial1",
+    "serial2",
+    "serial3",
+    "serial6",
+    "serial7",
+    "pwm0",
+    "pwm1",
+    "pwm2",
+    "pwm3",
+)
+
+PERIPHERAL_CONFLICTS = {
+    "serial3": ("i2c5",),
+    "i2c5": ("serial3",),
+    "i2c0": ("pwm2",),
+    "pwm2": ("i2c0",),
+    "spi2": ("pwm0", "pwm1"),
+    "pwm0": ("spi2",),
+    "pwm1": ("spi2",),
+    "i2c1": ("pwm3",),
+    "pwm3": ("i2c1",),
+}
+
+OVERLAYS = (
+    "dtoverlay_1_wire",
+    "dtoverlay_cam0_imx219",
+    "dtoverlay_cam0_imx477",
+    "dtoverlay_cam0_ov5647",
+    "dtoverlay_cam1_imx219",
+    "dtoverlay_cam1_imx477",
+    "dtoverlay_cam1_ov5647",
+    "dtoverlay_imu_bmi088_i2c5_x5_rdk",
+    "dtoverlay_imu_bmi088_spi1_x5_rdk",
+    "dtoverlay_imu_icm42688_i2c4_6_x5_rdk",
+    "dtoverlay_pps_gpio",
+    "dtoverlay_pwm0",
+    "dtoverlay_pwm1",
+    "dtoverlay_pwm2",
+    "dtoverlay_pwm3",
+    "dtoverlay_pwm0123",
+    "dtoverlay_spi5_spidev",
+)
+
+OVERLAY_GROUPS = (
+    frozenset(
+        {
+            "dtoverlay_cam0_imx219",
+            "dtoverlay_cam0_imx477",
+            "dtoverlay_cam0_ov5647",
+        }
+    ),
+    frozenset(
+        {
+            "dtoverlay_cam1_imx219",
+            "dtoverlay_cam1_imx477",
+            "dtoverlay_cam1_ov5647",
+        }
+    ),
+    frozenset(
+        {
+            "dtoverlay_imu_bmi088_i2c5_x5_rdk",
+            "dtoverlay_imu_bmi088_spi1_x5_rdk",
+        }
+    ),
+    frozenset(
+        {
+            "dtoverlay_pwm0",
+            "dtoverlay_pwm1",
+            "dtoverlay_pwm2",
+            "dtoverlay_pwm3",
+            "dtoverlay_pwm0123",
+        }
+    ),
+)
+
+BOARD_DTBS = {
+    "301": Path("/boot/hobot/x5-rdk.dtb"),
+    "302": Path("/boot/hobot/x5-rdk-v1p0.dtb"),
+}
+
+
+class PinmuxError(RuntimeError):
+    """Expected, user-facing validation failure."""
+
+
+def rooted(root: Path, logical_path: Path) -> Path:
+    if not logical_path.is_absolute():
+        raise PinmuxError(f"internal path is not absolute: {logical_path}")
+    return root / logical_path.relative_to("/")
+
+
+def read_required(path: Path, description: str) -> str:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError as error:
+        raise PinmuxError(f"cannot read {description} at {path}: {error}") from error
+
+
+def board_context(root: Path) -> tuple[str, Path, Path]:
+    soc_name = read_required(
+        rooted(root, Path("/sys/class/socinfo/soc_name")), "SOC name"
+    )
+    if "x5" not in soc_name.lower():
+        raise PinmuxError(f"expected an X5 SOC, found {soc_name!r}")
+
+    raw_board_id = read_required(
+        rooted(root, Path("/sys/class/socinfo/board_id")), "board ID"
+    ).lower()
+    board_id = raw_board_id.removeprefix("0x").lstrip("0") or "0"
+    logical_dtb = BOARD_DTBS.get(board_id)
+    if logical_dtb is None:
+        supported = ", ".join(sorted(BOARD_DTBS))
+        raise PinmuxError(
+            f"unsupported RDK X5 board ID {raw_board_id!r}; supported IDs: {supported}"
+        )
+
+    dtb = rooted(root, logical_dtb)
+    if dtb.is_symlink() or not dtb.is_file():
+        raise PinmuxError(f"active base DTB must be a regular file: {dtb}")
+    return board_id, logical_dtb, dtb
+
+
+def require_tools(*names: str) -> None:
+    missing = [name for name in names if shutil.which(name) is None]
+    if missing:
+        raise PinmuxError(f"missing required command(s): {', '.join(missing)}")
+
+
+def run_tool(arguments: list[str]) -> str:
+    result = subprocess.run(
+        arguments,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "unknown error"
+        raise PinmuxError(f"{' '.join(arguments)} failed: {detail}")
+    return result.stdout.strip()
+
+
+def normalize_status(status: str) -> str:
+    if status in ("ok", "okay"):
+        return "okay"
+    if status in ("disable", "disabled"):
+        return "disabled"
+    raise PinmuxError(f"unsupported device-tree status {status!r}")
+
+
+def peripheral_status(dtb: Path, peripheral: str) -> str:
+    return normalize_status(
+        run_tool(["fdtget", "-t", "s", str(dtb), peripheral, "status"])
+    )
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def sha256_bytes(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def make_temp_copy(target: Path) -> Path:
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.saha-", suffix=".tmp", dir=target.parent
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    shutil.copy2(target, temporary)
+    return temporary
+
+
+def write_temp_content(target: Path, content: bytes) -> Path:
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{target.name}.saha-", suffix=".tmp", dir=target.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+        if target.exists():
+            shutil.copystat(target, temporary)
+        else:
+            temporary.chmod(0o644)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    return temporary
+
+
+def confirmation_token(operation: str, result_hash: str) -> str:
+    return f"APPLY {operation} {result_hash}"
+
+
+def authorize(token: str, supplied: str | None) -> None:
+    if supplied is not None:
+        if supplied != token:
+            raise PinmuxError("confirmation token does not match the current plan")
+        return
+    if not sys.stdin.isatty():
+        raise PinmuxError("apply requires a TTY or an exact --confirm token")
+    entered = input(f"Type exactly to continue:\n{token}\n> ")
+    if entered != token:
+        raise PinmuxError("confirmation did not match; no files were changed")
+
+
+def fsync_directory(directory: Path) -> None:
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def next_backup_path(target: Path, original_hash: str) -> Path:
+    backup_directory = target.parent / ".saha-backups"
+    backup_directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    timestamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    base_name = f"{target.name}.{timestamp}.{original_hash[:12]}.bak"
+    candidate = backup_directory / base_name
+    suffix = 1
+    while candidate.exists():
+        candidate = backup_directory / f"{base_name}.{suffix}"
+        suffix += 1
+    return candidate
+
+
+def commit_file(
+    root: Path,
+    target: Path,
+    logical_target: Path,
+    candidate: Path,
+    expected_original_hash: str,
+    original_existed: bool,
+) -> Path | None:
+    if root == Path("/") and os.geteuid() != 0:
+        raise PinmuxError("live boot configuration changes require root")
+
+    lock_directory = rooted(root, Path("/run/lock"))
+    lock_directory.mkdir(mode=0o755, parents=True, exist_ok=True)
+    lock_path = lock_directory / "rdk-x5-pinmux.lock"
+    with lock_path.open("a", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+
+        if target.exists() != original_existed:
+            raise PinmuxError(f"{logical_target} changed after planning; retry")
+        current_hash = sha256_file(target) if target.exists() else sha256_bytes(b"")
+        if current_hash != expected_original_hash:
+            raise PinmuxError(f"{logical_target} changed after planning; retry")
+
+        backup = None
+        if target.exists():
+            backup = next_backup_path(target, current_hash)
+            backup_temp = write_temp_content(backup, target.read_bytes())
+            shutil.copystat(target, backup_temp)
+            os.replace(backup_temp, backup)
+            fsync_directory(backup.parent)
+
+        os.replace(candidate, target)
+        with target.open("rb") as written:
+            os.fsync(written.fileno())
+        fsync_directory(target.parent)
+        return backup
+
+
+def print_changes(changes: list[tuple[str, str, str]]) -> None:
+    if not changes:
+        print("changes: none")
+        return
+    for item, old, new in changes:
+        print(f"change: {item}: {old} -> {new}")
+
+
+def peripheral_command(args: argparse.Namespace, root: Path) -> None:
+    require_tools("fdtget", "fdtput")
+    board_id, logical_dtb, dtb = board_context(root)
+    desired = "okay" if args.action == "enable" else "disabled"
+    original_hash = sha256_file(dtb)
+    temporary = make_temp_copy(dtb)
+    changes: list[tuple[str, str, str]] = []
+    try:
+        current = peripheral_status(temporary, args.peripheral)
+        if args.action == "enable":
+            for conflict in PERIPHERAL_CONFLICTS.get(args.peripheral, ()):
+                conflict_status = peripheral_status(temporary, conflict)
+                if conflict_status != "disabled":
+                    run_tool(
+                        [
+                            "fdtput",
+                            "-t",
+                            "s",
+                            str(temporary),
+                            conflict,
+                            "status",
+                            "disabled",
+                        ]
+                    )
+                    changes.append((conflict, conflict_status, "disabled"))
+
+        if current != desired:
+            run_tool(
+                [
+                    "fdtput",
+                    "-t",
+                    "s",
+                    str(temporary),
+                    args.peripheral,
+                    "status",
+                    desired,
+                ]
+            )
+            changes.append((args.peripheral, current, desired))
+
+        for item, _old, new in changes:
+            if peripheral_status(temporary, item) != new:
+                raise PinmuxError(f"failed to verify planned status for {item}")
+
+        result_hash = sha256_file(temporary)
+        operation = f"peripheral:{args.peripheral}={desired}"
+        token = confirmation_token(operation, result_hash)
+        print(f"board-id: {board_id}")
+        print(f"target: {logical_dtb}")
+        print_changes(changes)
+        print(f"original-sha256: {original_hash}")
+        print(f"result-sha256: {result_hash}")
+
+        if not changes:
+            print("result: already configured; no files changed")
+            return
+        print(f"confirmation: {token}")
+        if not args.apply:
+            print("result: dry-run; no files changed")
+            return
+
+        authorize(token, args.confirm)
+        backup = commit_file(
+            root,
+            dtb,
+            logical_dtb,
+            temporary,
+            original_hash,
+            original_existed=True,
+        )
+        temporary = None
+        print(f"backup: {backup}")
+        print("result: applied; reboot required")
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def parsed_overlays(content: str) -> list[tuple[str, str | None, int]]:
+    parsed: list[tuple[str, str | None, int]] = []
+    section = None
+    for index, line in enumerate(content.splitlines()):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip().lower()
+            continue
+        if not stripped.startswith("dtoverlay="):
+            continue
+        value = stripped.split("=", 1)[1].split(",", 1)[0].strip()
+        if value:
+            parsed.append((value, section, index))
+    return parsed
+
+
+def overlay_group(name: str) -> frozenset[str]:
+    for group in OVERLAY_GROUPS:
+        if name in group:
+            return group
+    return frozenset({name})
+
+
+def validate_overlay(dtb: Path, overlay: Path) -> None:
+    descriptor, output_name = tempfile.mkstemp(prefix="rdk-x5-overlay-", suffix=".dtb")
+    os.close(descriptor)
+    output = Path(output_name)
+    try:
+        run_tool(
+            ["fdtoverlay", "-i", str(dtb), "-o", str(output), str(overlay)]
+        )
+        run_tool(["fdtget", "-t", "s", str(output), "/", "model"])
+    finally:
+        output.unlink(missing_ok=True)
+
+
+def render_overlay_config(
+    content: str, name: str, action: str
+) -> tuple[bytes, list[tuple[str, str, str]]]:
+    entries = parsed_overlays(content)
+    active = [entry_name for entry_name, _section, _index in entries]
+    group = overlay_group(name)
+    removed_names = set()
+
+    if action == "enable":
+        managed_matches = [
+            entry
+            for entry in entries
+            if entry[0] == name and entry[1] in (None, "all")
+        ]
+        conflicts = [entry for entry in entries if entry[0] in group - {name}]
+        duplicates = [entry for entry in entries if entry[0] == name]
+        if len(managed_matches) == 1 and not conflicts and len(duplicates) == 1:
+            return content.encode("utf-8"), []
+        remove_set = group
+    else:
+        if name not in active:
+            return content.encode("utf-8"), []
+        remove_set = frozenset({name})
+
+    output_lines = []
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("#") and stripped.startswith("dtoverlay="):
+            entry_name = stripped.split("=", 1)[1].split(",", 1)[0].strip()
+            if entry_name in remove_set:
+                removed_names.add(entry_name)
+                continue
+        output_lines.append(line)
+
+    while output_lines and output_lines[-1] == "":
+        output_lines.pop()
+
+    changes = [(removed, "enabled", "disabled") for removed in sorted(removed_names)]
+    if action == "enable":
+        if output_lines:
+            output_lines.append("")
+        output_lines.extend(["[all]", f"dtoverlay={name}"])
+        changes.append((name, "disabled", "enabled"))
+
+    output_lines.append("")
+    rendered = ("\n".join(output_lines) + "\n").encode("utf-8")
+    return rendered, changes
+
+
+def overlay_command(args: argparse.Namespace, root: Path) -> None:
+    require_tools("fdtget", "fdtoverlay")
+    board_id, logical_dtb, dtb = board_context(root)
+    logical_config = Path("/boot/config.txt")
+    config = rooted(root, logical_config)
+    if config.is_symlink() or (config.exists() and not config.is_file()):
+        raise PinmuxError(f"boot configuration must be a regular file: {config}")
+
+    logical_overlay = Path(f"/boot/overlays/{args.overlay}.dtbo")
+    overlay = rooted(root, logical_overlay)
+    if overlay.is_symlink() or not overlay.is_file():
+        raise PinmuxError(f"overlay is not installed as a regular file: {overlay}")
+    if args.action == "enable":
+        validate_overlay(dtb, overlay)
+
+    original_existed = config.exists()
+    original_content = config.read_bytes() if original_existed else b""
+    try:
+        decoded = original_content.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise PinmuxError(f"{logical_config} is not UTF-8 text") from error
+    rendered, changes = render_overlay_config(decoded, args.overlay, args.action)
+    original_hash = sha256_bytes(original_content)
+    result_hash = sha256_bytes(rendered)
+    operation = f"overlay:{args.overlay}={args.action}d"
+    token = confirmation_token(operation, result_hash)
+
+    print(f"board-id: {board_id}")
+    print(f"base-dtb: {logical_dtb}")
+    print(f"target: {logical_config}")
+    print_changes(changes)
+    print(f"original-sha256: {original_hash}")
+    print(f"result-sha256: {result_hash}")
+    if not changes:
+        print("result: already configured; no files changed")
+        return
+    print(f"confirmation: {token}")
+    if not args.apply:
+        print("result: dry-run; no files changed")
+        return
+
+    authorize(token, args.confirm)
+    candidate = write_temp_content(config, rendered)
+    try:
+        backup = commit_file(
+            root,
+            config,
+            logical_config,
+            candidate,
+            original_hash,
+            original_existed,
+        )
+        candidate = None
+        print(f"backup: {backup if backup is not None else 'none (new file)'}")
+        print("result: applied; reboot required")
+    finally:
+        if candidate is not None:
+            candidate.unlink(missing_ok=True)
+
+
+def status_command(root: Path) -> None:
+    require_tools("fdtget")
+    board_id, logical_dtb, dtb = board_context(root)
+    print(f"board-id: {board_id}")
+    print(f"base-dtb: {logical_dtb}")
+    print(f"base-dtb-sha256: {sha256_file(dtb)}")
+    for peripheral in PERIPHERALS:
+        print(f"peripheral: {peripheral}={peripheral_status(dtb, peripheral)}")
+
+    config = rooted(root, Path("/boot/config.txt"))
+    if not config.exists():
+        print("overlays: none (no /boot/config.txt)")
+        return
+    content = read_required(config, "boot configuration")
+    entries = parsed_overlays(content)
+    if not entries:
+        print("overlays: none")
+        return
+    for name, section, _index in entries:
+        print(f"overlay: {name} section={section or 'default'}")
+
+
+def restore_command(args: argparse.Namespace, root: Path) -> None:
+    require_tools("fdtget")
+    board_id, logical_dtb, dtb = board_context(root)
+    backup_directory = dtb.parent / ".saha-backups"
+    backup = Path(args.backup)
+    if not backup.is_absolute():
+        backup = backup_directory / backup
+    elif root != Path("/"):
+        backup = rooted(root, backup)
+    try:
+        backup_resolved = backup.resolve(strict=True)
+        backup_directory_resolved = backup_directory.resolve(strict=True)
+    except OSError as error:
+        raise PinmuxError(f"cannot resolve backup: {error}") from error
+    if backup_resolved.parent != backup_directory_resolved:
+        raise PinmuxError(f"backup must be directly inside {backup_directory}")
+    if not backup_resolved.name.startswith(f"{dtb.name}."):
+        raise PinmuxError(f"backup does not belong to {logical_dtb}")
+    if not backup_resolved.is_file() or backup_resolved.is_symlink():
+        raise PinmuxError("backup must be a regular, non-symlink file")
+    run_tool(["fdtget", "-t", "s", str(backup_resolved), "/", "model"])
+
+    original_hash = sha256_file(dtb)
+    result_hash = sha256_file(backup_resolved)
+    if original_hash == result_hash:
+        print("result: backup already matches active DTB; no files changed")
+        return
+    operation = f"restore:{logical_dtb}"
+    token = confirmation_token(operation, result_hash)
+    print(f"board-id: {board_id}")
+    print(f"target: {logical_dtb}")
+    print(f"source: {backup_resolved}")
+    print(f"original-sha256: {original_hash}")
+    print(f"result-sha256: {result_hash}")
+    print(f"confirmation: {token}")
+    if not args.apply:
+        print("result: dry-run; no files changed")
+        return
+
+    authorize(token, args.confirm)
+    candidate = make_temp_copy(backup_resolved)
+    try:
+        new_backup = commit_file(
+            root,
+            dtb,
+            logical_dtb,
+            candidate,
+            original_hash,
+            original_existed=True,
+        )
+        candidate = None
+        print(f"backup: {new_backup}")
+        print("result: restored; reboot required")
+    finally:
+        if candidate is not None:
+            candidate.unlink(missing_ok=True)
+
+
+def add_write_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--apply", action="store_true", help="write the validated plan"
+    )
+    parser.add_argument(
+        "--confirm",
+        metavar="TOKEN",
+        help="exact token printed by a matching dry-run (for automation)",
+    )
+
+
+def parse_arguments(arguments: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Guarded RDK X5 peripheral and overlay configuration"
+    )
+    parser.add_argument(
+        "--root",
+        default="/",
+        metavar="DIR",
+        help="operate on an offline root filesystem (default: /)",
+    )
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("status", help="show active DTB peripheral state")
+
+    peripheral = commands.add_parser(
+        "peripheral", help="plan or apply a base-DTB peripheral state"
+    )
+    peripheral.add_argument("action", choices=("enable", "disable"))
+    peripheral.add_argument("peripheral", choices=PERIPHERALS)
+    add_write_options(peripheral)
+
+    overlay = commands.add_parser(
+        "overlay", help="plan or apply an opt-in overlay configuration"
+    )
+    overlay.add_argument("action", choices=("enable", "disable"))
+    overlay.add_argument("overlay", choices=OVERLAYS)
+    add_write_options(overlay)
+
+    restore = commands.add_parser(
+        "restore", help="plan or restore a DTB from .saha-backups"
+    )
+    restore.add_argument("backup", help="backup filename or absolute logical path")
+    add_write_options(restore)
+    return parser.parse_args(arguments)
+
+
+def main(arguments: list[str] | None = None) -> int:
+    args = parse_arguments(sys.argv[1:] if arguments is None else arguments)
+    try:
+        root = Path(args.root)
+        if not root.is_absolute():
+            raise PinmuxError("--root must be an absolute directory")
+        root = root.resolve(strict=True)
+        if not root.is_dir():
+            raise PinmuxError(f"--root is not a directory: {root}")
+
+        if args.command == "status":
+            status_command(root)
+        elif args.command == "peripheral":
+            peripheral_command(args, root)
+        elif args.command == "overlay":
+            overlay_command(args, root)
+        elif args.command == "restore":
+            restore_command(args, root)
+        else:
+            raise PinmuxError(f"unsupported command: {args.command}")
+        return 0
+    except PinmuxError as error:
+        print(f"rdk-x5-pinmux: error: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

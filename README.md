@@ -100,6 +100,33 @@ hardware-specific and require a reboot after an explicit configuration
 change.  Only the camera sensors listed in the accelerator section have the
 corresponding native-HBN userspace stack in the current image.
 
+## Protected pinmux configuration
+
+`rdk-x5-pinmux` replaces the unsafe in-place part of the vendor
+`srpi-config` workflow.  It validates the X5 SOC and board ID, selects the
+matching 301/302 base DTB, disables known pin conflicts, verifies every
+candidate with the device-tree tools, and defaults to a read-only dry run.
+
+For example:
+
+```sh
+rdk-x5-pinmux status
+rdk-x5-pinmux peripheral enable i2c1
+rdk-x5-pinmux overlay enable dtoverlay_pps_gpio
+```
+
+A change is written only with `--apply` followed by the exact hash-bound token
+printed by that same plan.  Interactive terminals prompt for it; automation
+must pass it with `--confirm`.  Replaced files are backed up atomically in a
+root-only `.saha-backups` directory beside the target.  Restore a base DTB
+with `rdk-x5-pinmux restore BACKUP`; restoration has the same dry-run and
+confirmation requirements.  A reboot is always required after an applied
+pinmux, overlay, or restore operation.
+
+The tool does not guess what is attached to the 40-pin header.  Enabling a bus
+or overlay remains an operator decision, and hardware tests must be limited to
+known attached devices.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -444,6 +444,37 @@ done
 if sed '/^[[:space:]]*#/d' "$overlay_recipe" |
   rg -q 'dtoverlay_test|ion_resize_overlay|config\.txt'; then
   fail "RDK X5 overlay recipe contains a test/X3 overlay or auto-enable policy"
+fi
+
+pinmux_recipe="$layer_dir/recipes-d-robotics/io/rdk-x5-pinmux_1.0.bb"
+pinmux_tool="$layer_dir/recipes-d-robotics/io/files/rdk-x5-pinmux"
+[ -f "$pinmux_recipe" ] || fail "RDK X5 guarded pinmux recipe is missing"
+[ -f "$pinmux_tool" ] || fail "RDK X5 guarded pinmux tool is missing"
+require_line "$pinmux_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$pinmux_recipe" 'S = "${UNPACKDIR}"'
+for pinmux_dependency in \
+  dtc \
+  hobot-dtb-overlays \
+  python3-core \
+  python3-crypt \
+  python3-fcntl \
+  python3-io; do
+  rg -q "^[[:space:]]*${pinmux_dependency}[[:space:]]*\\\\$" "$pinmux_recipe" ||
+    fail "RDK X5 guarded pinmux recipe is missing: ${pinmux_dependency}"
+done
+for pinmux_guard in \
+  'BOARD_DTBS = {' \
+  'PERIPHERAL_CONFLICTS = {' \
+  'result: dry-run; no files changed' \
+  'apply requires a TTY or an exact --confirm token' \
+  '.saha-backups' \
+  'os.replace(candidate, target)' \
+  'fdtoverlay'; do
+  rg -Fq -- "$pinmux_guard" "$pinmux_tool" ||
+    fail "RDK X5 guarded pinmux tool is missing safety guard: ${pinmux_guard}"
+done
+if rg -q 'subprocess\.(run|call|Popen).*shell[[:space:]]*=[[:space:]]*True|chmod\([^)]*0o?777' "$pinmux_tool"; then
+  fail "RDK X5 guarded pinmux tool contains an unsafe shell or permission policy"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"

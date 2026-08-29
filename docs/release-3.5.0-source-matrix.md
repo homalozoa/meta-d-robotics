@@ -43,13 +43,15 @@ enter an image until a separately reviewed recipe names that pin.
 | `hobot-dtb-overlays` | `3.0.8` | `RDK_X5_SRCREV_HOBOT_DTB` | `Apache-2.0`; repository `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Compiles an explicit production overlay allowlist from DTS and installs matching module roots without enabling hardware.  Excludes the vendor test overlay and the X3-only ION resize overlay. |
 
 `packagegroup-rdk-x5-camera`, `packagegroup-rdk-x5-accelerators`,
-`rdk-x5-peripherals`, `rdk-x5-audio`, `rdk-x5-display`, and
-`rdk-x5-media-modules` are metadata/local-policy-only `MIT` recipes with
-version `1.0`; they contain no
+`rdk-x5-peripherals`, `rdk-x5-audio`, `rdk-x5-display`,
+`rdk-x5-media-modules`, and `rdk-x5-pinmux` are
+metadata/local-policy-only `MIT` recipes with version `1.0`; they contain no
 fetched vendor source.  All are `rdk-x5`-only.  The camera, peripheral, audio,
 display, and native-media recipes name only roots of the kernel-module
 dependency graph, and the BPU group names the stable driver metapackage rather
-than a guessed kernel-version package name.
+than a guessed kernel-version package name.  `rdk-x5-pinmux` implements the
+reviewed RDKOS conflict map without copying the vendor's unguarded in-place
+DTB write policy.
 
 The `libdrm_%.bbappend` creates an RDK-X5-only `libdrm-modetest` split from
 Wrynose's maintained libdrm source.  This replaces the prebuilt diagnostic in
