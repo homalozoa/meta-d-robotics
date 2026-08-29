@@ -41,11 +41,17 @@ enter an image until a separately reviewed recipe names that pin.
 | `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` | `Apache-2.0`; `LICENSE` `3b83ef96387f14655fc854ddc3c6bd57` | `rdk-x5` only.  Selects only the official AIC8800D80 firmware used by SDIO `C8A1:0082`, plus version-neutral AIC/cfg80211 and ttyS5 Bluetooth module roots.  Broadcom, Realtek, Debian host libraries, and credentials are excluded. |
 
 `packagegroup-rdk-x5-camera`, `packagegroup-rdk-x5-accelerators`,
-`rdk-x5-peripherals`, and `rdk-x5-audio` are metadata/local-policy-only `MIT`
-recipes with version `1.0`; they contain no fetched vendor source.  All are
-`rdk-x5`-only.  The camera, peripheral, and audio recipes name only roots of
-the kernel-module dependency graph, and the BPU group names the stable driver
-metapackage rather than a guessed kernel-version package name.
+`rdk-x5-peripherals`, `rdk-x5-audio`, and `rdk-x5-display` are
+metadata/local-policy-only `MIT` recipes with version `1.0`; they contain no
+fetched vendor source.  All are `rdk-x5`-only.  The camera, peripheral, audio,
+and display recipes name only roots of the kernel-module dependency graph, and
+the BPU group names the stable driver metapackage rather than a guessed
+kernel-version package name.
+
+The `libdrm_%.bbappend` creates an RDK-X5-only `libdrm-modetest` split from
+Wrynose's maintained libdrm source.  This replaces the prebuilt diagnostic in
+`x5-hobot-configs` without installing the unrelated AMDGPU and Etnaviv tests
+carried by the upstream `libdrm-tests` package.
 
 ## Complete RDKOS pin inventory
 

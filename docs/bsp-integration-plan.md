@@ -33,7 +33,7 @@ and optional hardware surfaces remain independently testable.
 | Wi-Fi and Bluetooth | AIC8800D80 SDIO firmware/driver and UART5 Bluetooth at 1.5 Mbaud, no flow control | Implemented | `wlan0` scan, `hci0` readiness, rfkill and BlueZ checks |
 | Core board peripherals | HPU3501 RTC, ACT LED, TCAN4x5x, DT-declared SPI, I2C/GPIO tools | Implemented | RTC read, ACT trigger, SPI nodes, I2C enumeration, CAN loopback without external traffic |
 | Onboard audio | DesignWare I2S, ES8326 codec, duplex sound-card drivers | Implemented; hardware validation pending | ALSA cards/PCMs enumerate; mixer read; bounded capture/playback tests with safe levels |
-| HDMI and graphics | Galcore GPU, N2D, SII9022 bridge and VeriSilicon DRM pipeline | Missing | `/dev/dri` nodes, connector/mode enumeration, HDMI hotplug and framebuffer/DRM smoke |
+| HDMI and graphics | Galcore GPU, N2D, SII9022 bridge and VeriSilicon DRM pipeline | Implemented; hardware validation pending | `/dev/dri` nodes, connector/mode enumeration, HDMI hotplug and framebuffer/DRM smoke |
 | Native camera and codec pipeline | ISC/camera wrapper, VIN/SIF/ISP/VSE, OSD/GDC, VPU/JPU | Partial: selected sensor runtime and a small kernel-module root set | Module binding, media graph, sensor probe, one captured frame, encode/decode smoke, then BPU inference |
 | 40-pin control and overlays | `hobot-io`, `hb_dtb_tool`, pinmux overlays and GPIO/SPI/I2C/UART/PWM helpers | Missing | Overlay round trip, reboot persistence, GPIO line test and one test per enabled bus |
 | Power, thermal and QoS | CPU policy, QoS setup, suspend button and board status policy from `hobot-configs` | Not audited for Yocto policy yet | Thermal zones/cooling, frequency policy, suspend/resume and idle stability |
@@ -42,7 +42,7 @@ and optional hardware surfaces remain independently testable.
 ## Delivery order
 
 1. Validate the onboard audio module and ALSA diagnostic package on hardware.
-2. Add the base HDMI/DRM/2D display closure and standard DRM diagnostics.
+2. Validate the base HDMI/DRM/2D display closure and DRM diagnostics.
 3. Complete the native camera, image-processing, VPU and JPU module closure;
    keep V4L2 and native HBN modes separately selectable if they conflict.
 4. Port the source-built portions of `x5-hobot-io`, including a safe overlay

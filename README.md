@@ -72,6 +72,14 @@ the onboard ES8326 codec, and both DT-enabled duplex sound cards.  `aplay`,
 RDKOS `audio_gadget` boot helper is deliberately excluded because it changes
 mixer state and starts playback and capture on every boot.
 
+## HDMI and graphics
+
+The base machine installs the RDKOS 3.5.0 module roots for the GC8000L GPU,
+GC820 N2D engine, SII9022 HDMI bridge, and VeriSilicon DRM pipeline.  Standard
+libdrm diagnostics, including `modetest`, are available for connector and mode
+validation.  DSI panel drivers and overlays remain opt-in because they change
+the board's display graph and require matching panel hardware.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -373,6 +373,41 @@ for audio_module in \
 done
 if rg -q 'audio_gadget|kernel-module-es8311|^[[:space:]]*kernel-modules[[:space:]]' "$audio_recipe"; then
   fail "RDK X5 onboard audio recipe contains an inactive or unsafe dependency"
+fi
+
+display_recipe="$layer_dir/recipes-d-robotics/display/rdk-x5-display_1.0.bb"
+display_modules="$layer_dir/recipes-d-robotics/display/files/30-rdk-x5-display.conf"
+libdrm_append="$layer_dir/recipes-graphics/drm/libdrm_%.bbappend"
+[ -f "$display_recipe" ] || fail "RDK X5 base display recipe is missing"
+[ -f "$display_modules" ] || fail "RDK X5 base display module policy is missing"
+[ -f "$libdrm_append" ] || fail "RDK X5 modetest package split is missing"
+require_line "$display_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$display_recipe" 'S = "${UNPACKDIR}"'
+require_line "$libdrm_append" 'PACKAGECONFIG:append:rdk-x5 = " tests install-test-programs"'
+require_line "$libdrm_append" 'PACKAGES:prepend:rdk-x5 = "${PN}-modetest "'
+require_line "$libdrm_append" 'FILES:${PN}-modetest:rdk-x5 = "${bindir}/modetest"'
+for display_dependency in \
+  libdrm-modetest \
+  kernel-module-drm-kms-helper \
+  kernel-module-galcore \
+  kernel-module-sii902x \
+  kernel-module-vio-n2d \
+  kernel-module-vs-drm \
+  kernel-module-vs-x5-syscon-bridge; do
+  rg -q "^[[:space:]]*${display_dependency}[[:space:]]*\\\\$" "$display_recipe" ||
+    fail "RDK X5 base display recipe is missing: $display_dependency"
+done
+for display_module in \
+  galcore \
+  vio_n2d \
+  sii902x \
+  vs_x5_syscon_bridge \
+  drm_kms_helper \
+  vs_drm; do
+  require_line "$display_modules" "$display_module"
+done
+if rg -q 'libdrm-tests|drm=1|panel-|^[[:space:]]*kernel-modules[[:space:]]' "$display_recipe" "$display_modules"; then
+  fail "RDK X5 base display recipe contains Xorg-only policy or an optional panel"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
