@@ -46,7 +46,9 @@ the broad `kernel-modules` package.
 systemd-networkd requests DHCP and accepts IPv6 router advertisements only for
 Ethernet links whose udev bus property is USB.  Those links do not delay
 `network-online.target`, and the earlier board-specific `eth0`, `usb0`, and
-`usb1` profiles retain precedence.
+`usb1` profiles retain precedence.  `ethtool` is included so the native and
+USB Ethernet driver, PHY negotiation, and link state can be inspected during
+hardware acceptance tests.
 
 ## USB serial and UVC peripherals
 

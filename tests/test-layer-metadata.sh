@@ -303,6 +303,7 @@ usb_host_network="$layer_dir/recipes-d-robotics/usb/files/25-rdk-x5-usb-ethernet
 require_line "$usb_host_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$usb_host_recipe" 'S = "${UNPACKDIR}"'
 for usb_host_module in \
+  ethtool \
   kernel-module-asix \
   kernel-module-ax88179-178a \
   kernel-module-cdc-eem \

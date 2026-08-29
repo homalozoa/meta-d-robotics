@@ -13,6 +13,7 @@ S = "${UNPACKDIR}"
 # exact 6.1.83 packages emitted by linux-d-robotics, including their module
 # dependency closure and USB modalias metadata.
 RDEPENDS:${PN} = " \
+    ethtool \
     kernel-module-asix \
     kernel-module-ax88179-178a \
     kernel-module-cdc-eem \
