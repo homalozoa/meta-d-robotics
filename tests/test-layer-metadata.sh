@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -346,6 +346,33 @@ for peripheral_module in \
 done
 if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$peripherals_recipe"; then
   fail "RDK X5 core peripherals must not pull the broad kernel-modules package"
+fi
+
+audio_recipe="$layer_dir/recipes-d-robotics/audio/rdk-x5-audio_1.0.bb"
+audio_modules="$layer_dir/recipes-d-robotics/audio/files/30-rdk-x5-audio.conf"
+[ -f "$audio_recipe" ] || fail "RDK X5 onboard audio recipe is missing"
+[ -f "$audio_modules" ] || fail "RDK X5 onboard audio module policy is missing"
+require_line "$audio_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$audio_recipe" 'S = "${UNPACKDIR}"'
+for audio_dependency in \
+  alsa-utils-amixer \
+  alsa-utils-aplay \
+  kernel-module-designware-i2s \
+  kernel-module-snd-soc-duplex-card \
+  kernel-module-snd-soc-es8326 \
+  kernel-module-snd-soc-hobot-sound-duplex-host; do
+  rg -q "^[[:space:]]*${audio_dependency}[[:space:]]*\\\\$" "$audio_recipe" ||
+    fail "RDK X5 onboard audio recipe is missing: $audio_dependency"
+done
+for audio_module in \
+  designware_i2s \
+  snd_soc_es8326 \
+  snd_soc_duplex_card \
+  snd_soc_hobot_sound_duplex_host; do
+  require_line "$audio_modules" "$audio_module"
+done
+if rg -q 'audio_gadget|kernel-module-es8311|^[[:space:]]*kernel-modules[[:space:]]' "$audio_recipe"; then
+  fail "RDK X5 onboard audio recipe contains an inactive or unsafe dependency"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"

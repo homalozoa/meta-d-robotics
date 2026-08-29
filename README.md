@@ -64,6 +64,14 @@ list is deliberately explicit; the layer never pulls the broad
 The remaining RDKOS parity work, compatibility rules, and hardware acceptance
 gates are tracked in [docs/bsp-integration-plan.md](docs/bsp-integration-plan.md).
 
+## Onboard audio
+
+The base machine installs the module roots for the two DesignWare I2S links,
+the onboard ES8326 codec, and both DT-enabled duplex sound cards.  `aplay`,
+`arecord`, and `amixer` are included for bounded hardware tests.  The legacy
+RDKOS `audio_gadget` boot helper is deliberately excluded because it changes
+mixer state and starts playback and capture on every boot.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only
