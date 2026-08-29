@@ -52,7 +52,8 @@ for matrix_entry in \
   '| `hobot-multimedia` | `3.0.5` | `RDK_X5_SRCREV_HOBOT_MULTIMEDIA` |' \
   '| `hobot-dnn` and `hobot-dnn-dev` | `3.0.4` | `RDK_X5_SRCREV_HOBOT_DNN` |' \
   '| `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` |' \
-  '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |'; do
+  '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |' \
+  '| `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` |'; do
   rg -Fq -- "$matrix_entry" "$source_matrix" ||
     fail "RDK X5 source matrix is missing recipe entry: ${matrix_entry}"
 done
@@ -73,7 +74,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -208,6 +209,51 @@ if rg -q 'debian/usr/hobot/lib/\*|libevent' "$camera_recipe"; then
 fi
 if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$camera_recipe"; then
   fail "RDK X5 camera runtime must not bypass binary or dependency QA"
+fi
+
+usb_gadget_recipe="$layer_dir/recipes-d-robotics/utils/hobot-usb-gadget_3.0.7.bb"
+usb_gadget_files="$layer_dir/recipes-d-robotics/utils/files"
+[ -f "$usb_gadget_recipe" ] || fail "RDK X5 USB gadget recipe is missing"
+require_line "$usb_gadget_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$usb_gadget_recipe" 'SRCREV = "${RDK_X5_SRCREV_HOBOT_UTILS}"'
+require_line "$usb_gadget_recipe" 'inherit systemd'
+require_line "$usb_gadget_recipe" 'SYSTEMD_SERVICE:${PN} = "hobot-usb-gadget.service"'
+if rg -q '\$\{WORKDIR\}/(hobot-usb-gadget|30-rdk-x5-usb)' "$usb_gadget_recipe"; then
+  fail "RDK X5 USB gadget local files must use the Wrynose UNPACKDIR layout"
+fi
+for usb_dependency in \
+  kernel-module-usb-f-ecm \
+  kernel-module-usb-f-rndis; do
+  rg -q "^[[:space:]]*${usb_dependency}[[:space:]]*\\\\$" "$usb_gadget_recipe" ||
+    fail "RDK X5 USB gadget recipe is missing dependency: ${usb_dependency}"
+done
+for usb_source_file in \
+  0001-usb-gadget-make-launcher-portable-to-yocto.patch \
+  hobot-usb-gadget.service \
+  30-rdk-x5-usb0.network \
+  30-rdk-x5-usb1.network; do
+  [ -f "$usb_gadget_files/$usb_source_file" ] ||
+    fail "RDK X5 USB gadget integration file is missing: $usb_source_file"
+done
+require_line "$usb_gadget_files/hobot-usb-gadget.service" 'Type=oneshot'
+require_line "$usb_gadget_files/hobot-usb-gadget.service" 'RemainAfterExit=yes'
+require_line "$usb_gadget_files/hobot-usb-gadget.service" 'ExecStart=/usr/libexec/hobot-usb-gadget/usb-gadget.sh start rndis-ecm'
+if rg -q 'mass_storage|rndis-ecm-msd|[[:space:]]&[[:space:]]*$' "$usb_gadget_files/hobot-usb-gadget.service"; then
+  fail "RDK X5 USB Ethernet service must not expose mass storage or shell backgrounding"
+fi
+require_line "$usb_gadget_files/30-rdk-x5-usb0.network" 'Address=192.168.128.10/24'
+require_line "$usb_gadget_files/30-rdk-x5-usb0.network" 'Gateway=192.168.128.1'
+require_line "$usb_gadget_files/30-rdk-x5-usb1.network" 'Address=192.168.128.10/24'
+if rg -q '^Gateway=' "$usb_gadget_files/30-rdk-x5-usb1.network"; then
+  fail "RDK X5 usb1 profile must match the official no-gateway contract"
+fi
+if ! rg -Fq -- "BOARD=\$(tr -d '\\000' < /proc/device-tree/model)" \
+    "$usb_gadget_files/0001-usb-gadget-make-launcher-portable-to-yocto.patch"; then
+  fail "RDK X5 USB gadget patch must avoid a runtime binutils dependency"
+fi
+if ! rg -Fq -- 'CONFIG_DIR=/etc/hobot-usb-gadget' \
+    "$usb_gadget_files/0001-usb-gadget-make-launcher-portable-to-yocto.patch"; then
+  fail "RDK X5 USB gadget patch must use a systemd-safe configuration path"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"

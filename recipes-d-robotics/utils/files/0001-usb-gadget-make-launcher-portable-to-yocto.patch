@@ -1,0 +1,82 @@
+From 9c571629f40e7a52c52d63c480f076fbe03665da Mon Sep 17 00:00:00 2001
+From: meta-d-robotics maintainers <maintainers@example.invalid>
+Date: Sun, 30 Aug 2026 12:00:00 +0800
+Subject: [PATCH] usb-gadget: make launcher portable to Yocto
+
+The RDKOS launcher sources a Debian-specific init helper without using any
+of its functions and stores configuration below the SysV init directory.
+Use a dedicated configuration path suitable for a native systemd service.
+
+The launcher also invokes strings solely to remove the NUL byte from the
+device-tree model.  Use the POSIX utility already provided by the base image
+so the gadget does not pull in binutils.
+
+Upstream-Status: Inappropriate [Yocto integration]
+Signed-off-by: meta-d-robotics maintainers <maintainers@example.invalid>
+---
+ x5/static/etc/init.d/usb-gadget.sh | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/x5/static/etc/init.d/usb-gadget.sh b/x5/static/etc/init.d/usb-gadget.sh
+index 586715f..8680d1c 100755
+--- a/x5/static/etc/init.d/usb-gadget.sh
++++ b/x5/static/etc/init.d/usb-gadget.sh
+@@ -2,14 +2,12 @@
+ # init-usb-gadget.sh
+ # sysvinit script
+ 
+-# Using the lsb functions to perform the operations.
+-. /etc/init.d/functions
+-
+ # !!IMPORTANT!! include user config for usb-gadget
+-# source /etc/init.d/.usb/.default-config
++# source /etc/hobot-usb-gadget/.default-config
+ 
+ # local definitions
+ DEBUG=false
++CONFIG_DIR=/etc/hobot-usb-gadget
+ 
+ # gadget default info
+ SERIAL=""
+@@ -28,7 +26,7 @@ IS_UVC_ISOC=false;
+ IS_MULTI_FUNC=false;
+ USE_MULT_ALTSETTING=false;
+ 
+-BOARD=$(strings /proc/device-tree/model)
++BOARD=$(tr -d '\000' < /proc/device-tree/model)
+ 
+ case $BOARD in
+ "Horizon X5 ASIC Evaluation board")
+@@ -112,9 +110,9 @@ if [ -z $SERIAL ]; then
+     fi
+ fi
+ 
+-# make sure .usb-config is exist!
+-if [ ! -d /etc/init.d/.usb ]; then
+-    echo "No .usb directory, break"
++# make sure the USB gadget configuration directory exists
++if [ ! -d "$CONFIG_DIR" ]; then
++    echo "No USB gadget configuration directory ($CONFIG_DIR), break"
+     exit 3
+ fi
+ 
+@@ -1377,7 +1375,7 @@ start)
+ 
+     # backup user-config for stop usage (ignore the changes before restart)
+     if [ $USER_CONFIG != "/tmp/$USB_TMP_CONFIG" ]; then
+-        cp /etc/init.d/.usb/$USER_CONFIG /tmp/$USB_TMP_CONFIG
++        cp "$CONFIG_DIR/$USER_CONFIG" /tmp/$USB_TMP_CONFIG
+     fi
+ 
+     # check if using uvc isoc mode
+@@ -1417,7 +1415,7 @@ stop)
+ 
+     # re-source .usb-last-config again.
+     # only system reboot will remove /tmp/.usb-last-config, which means
+-    # next /etc/init.d/usb-gadget.sh start command will lunch last config
++    # next usb-gadget.sh start command will launch the last config
+     . /tmp/$USB_TMP_CONFIG
+ 
+     show_user_config
+-- 
+2.51.0

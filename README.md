@@ -20,6 +20,21 @@ The layer is being delivered in independently buildable steps:
 The layer does not update miniboot or U-Boot in NAND as part of an image build
 or TF-card flash.
 
+## USB device networking
+
+Every RDK X5 image includes the pinned RDKOS 3.5.0 USB Ethernet setup.  The
+board exposes RNDIS and CDC ECM functions with the official `0525:a4a2`
+identity, allowing Windows and Linux hosts to select their native driver.  The
+device-side address remains `192.168.128.10/24`; `usb0` retains the official
+`192.168.128.1` gateway while `usb1` has no default route.
+
+The vendor launcher is kept source-backed, but its Debian init dependency is
+removed and it runs as a bounded systemd oneshot service.  systemd-networkd
+replaces the original NetworkManager/netplan policy.  Only the required ECM,
+RNDIS, `u_ether`, and `libcomposite` module closure enters the image.  The
+official mass-storage function is intentionally disabled so connecting the
+board cannot expose a writable or synthetic disk to the host.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

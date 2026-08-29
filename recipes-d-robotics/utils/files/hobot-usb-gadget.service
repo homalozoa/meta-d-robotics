@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Unit]
+Description=D-Robotics RDK X5 USB Ethernet gadget
+Wants=sys-kernel-config.mount
+After=systemd-modules-load.service sys-kernel-config.mount
+Before=network-pre.target
+ConditionPathExists=/sys/class/udc/35300000.usb
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/hobot-usb-gadget/usb-gadget.sh start rndis-ecm
+ExecStop=/usr/libexec/hobot-usb-gadget/usb-gadget.sh stop
+TimeoutStopSec=15s
+
+[Install]
+WantedBy=multi-user.target

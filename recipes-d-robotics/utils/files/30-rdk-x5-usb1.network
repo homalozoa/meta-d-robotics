@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+
+[Match]
+Name=usb1
+
+[Link]
+RequiredForOnline=no
+
+[Network]
+Address=192.168.128.10/24
+LinkLocalAddressing=no
+IPv6AcceptRA=no
