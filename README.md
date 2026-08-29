@@ -89,6 +89,17 @@ makes GPIO, PWM, SPI, galcore, and nano2d world-writable is not installed.
 Pinmux changes and overlays remain a separate protected workflow because they
 can disable conflicting buses and only take effect after reboot.
 
+## Device-tree overlays
+
+The machine ships the production RDK X5 overlays from the exact RDKOS 3.5.0
+`x5-hobot-dtb` revision.  They are compiled from DTS during the Yocto build;
+the vendor test overlay and X3-only ION resize overlay are excluded after
+compatibility checks against both supported RDK X5 base DTBs.  Nothing is
+enabled automatically.  Camera, IMU, PWM, PPS, SPI5, and 1-Wire overlays are
+hardware-specific and require a reboot after an explicit configuration
+change.  Only the camera sensors listed in the accelerator section have the
+corresponding native-HBN userspace stack in the current image.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

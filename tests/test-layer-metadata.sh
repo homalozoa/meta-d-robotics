@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -421,6 +421,29 @@ require_line "$gpio_recipe" 'RDEPENDS:${PN} += "python3-core"'
 if sed '/^[[:space:]]*#/d' "$gpio_recipe" |
   rg -q '99-gpio\.rules|libgpiod\.a|srpi-config|hb_dtb_tool'; then
   fail "RDK X5 Hobot.GPIO recipe contains an unsafe or prebuilt adjacent component"
+fi
+
+overlay_recipe="$layer_dir/recipes-bsp/overlays/hobot-dtb-overlays_3.0.8.bb"
+[ -f "$overlay_recipe" ] || fail "RDK X5 overlay recipe is missing"
+require_line "$overlay_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$overlay_recipe" 'SRCREV_dtb = "${RDK_X5_SRCREV_HOBOT_DTB}"'
+require_line "$overlay_recipe" 'DEPENDS = "dtc-native"'
+require_line "$overlay_recipe" 'FILES:${PN} = "/boot/overlays"'
+for overlay in \
+  dtoverlay_1_wire \
+  dtoverlay_cam0_imx219 \
+  dtoverlay_cam1_imx219 \
+  dtoverlay_imu_bmi088_i2c5_x5_rdk \
+  dtoverlay_imu_bmi088_spi1_x5_rdk \
+  dtoverlay_imu_icm42688_i2c4_6_x5_rdk \
+  dtoverlay_pps_gpio \
+  dtoverlay_pwm0123 \
+  dtoverlay_spi5_spidev; do
+  require_line "$overlay_recipe" "    $overlay \\"
+done
+if sed '/^[[:space:]]*#/d' "$overlay_recipe" |
+  rg -q 'dtoverlay_test|ion_resize_overlay|config\.txt'; then
+  fail "RDK X5 overlay recipe contains a test/X3 overlay or auto-enable policy"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
