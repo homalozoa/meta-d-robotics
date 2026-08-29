@@ -61,6 +61,9 @@ interfaces can be tested without an additional debug image.  The dependency
 list is deliberately explicit; the layer never pulls the broad
 `kernel-modules` package merely to make a device appear.
 
+The remaining RDKOS parity work, compatibility rules, and hardware acceptance
+gates are tracked in [docs/bsp-integration-plan.md](docs/bsp-integration-plan.md).
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only
