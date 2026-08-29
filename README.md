@@ -113,8 +113,27 @@ mixer state and starts playback and capture on every boot.
 The base machine installs the RDKOS 3.5.0 module roots for the GC8000L GPU,
 GC820 N2D engine, SII9022 HDMI bridge, and VeriSilicon DRM pipeline.  Standard
 libdrm diagnostics, including `modetest`, are available for connector and mode
-validation.  DSI panel drivers and overlays remain opt-in because they change
-the board's display graph and require matching panel hardware.
+validation.  It also installs the EGL 1, GLESv2, Vivante GBM/DRM, shader
+compiler, and Nano2D runtime closure from the same pinned RDKOS multimedia
+revision.  This is a runtime package rather than a `virtual/egl` development
+provider: the exact RDKOS 3.5.0 development repository supplies the selected
+EGL/GLES2/GBM/Nano2D headers to dependent recipe sysroots, but unversioned
+linker interfaces and global provider policy remain excluded.  Mixing the
+runtime with Mesa's same-SONAME packages is rejected.  OpenCL, Vulkan, GLES1,
+and GLES3 remain separately reviewable rather than entering the base image.
+DSI panel drivers and overlays remain opt-in because they change the board's
+display graph and require matching panel hardware.
+
+After boot, run the bounded hardware smoke test as root:
+
+```sh
+timeout 15s rdk-x5-gpu-smoke
+```
+
+It creates a 1x1 EGL/GLES2 pbuffer through DRM/GBM when available, submits a
+clear operation, rejects known software renderers, and opens/closes the
+Nano2D kernel interface.  A pass ends with `RDK_X5_GPU_SMOKE_PASS`; library or
+device-node presence alone is not treated as a hardware pass.
 
 ## 40-pin GPIO
 

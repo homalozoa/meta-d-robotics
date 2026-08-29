@@ -49,7 +49,8 @@ source_matrix="$layer_dir/docs/release-3.5.0-source-matrix.md"
 require_line "$source_matrix" '# RDK X5 RDKOS 3.5.0 source and compatibility matrix'
 for matrix_entry in \
   '| `linux-d-robotics` / `kernel-*` | `6.1.83+git` |' \
-  '| `hobot-multimedia` | `3.0.5` | `RDK_X5_SRCREV_HOBOT_MULTIMEDIA` |' \
+  '| `hobot-multimedia`, `hobot-multimedia-loader`, and `hobot-multimedia-gpu` | `3.0.5` | `RDK_X5_SRCREV_HOBOT_MULTIMEDIA` |' \
+  '| `hobot-multimedia-headers` | `3.0.4` | `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV` |' \
   '| `hobot-dnn` and `hobot-dnn-dev` | `3.0.4` | `RDK_X5_SRCREV_HOBOT_DNN` |' \
   '| `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` |' \
   '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |' \
@@ -138,16 +139,53 @@ multimedia_recipe="$layer_dir/recipes-d-robotics/multimedia/hobot-multimedia_3.0
 [ -f "$multimedia_recipe" ] || fail "RDK X5 multimedia runtime recipe is missing"
 require_line "$multimedia_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$multimedia_recipe" 'SRCREV_multimedia = "${RDK_X5_SRCREV_HOBOT_MULTIMEDIA}"'
-require_line "$multimedia_recipe" 'DEPENDS = "cjson"'
+require_line "$multimedia_recipe" 'DEPENDS = "cjson libdrm"'
 require_line "$multimedia_recipe" 'inherit rdk-x5-prebuilt-elf'
 require_line "$multimedia_recipe" 'RDK_X5_PREBUILT_ELF_MAX_GLIBC = "2.34"'
 require_line "$multimedia_recipe" 'SYSROOT_DIRS:append = " /usr/hobot"'
 require_line "$multimedia_recipe" 'INSANE_SKIP:${PN} += "libdir"'
+require_line "$multimedia_recipe" 'INSANE_SKIP:${PN}-gpu += "libdir"'
+require_line "$multimedia_recipe" 'PACKAGES =+ "${PN}-loader ${PN}-gpu"'
+require_line "$multimedia_recipe" 'RDEPENDS:${PN}-gpu += "libdrm ${PN}-loader"'
+require_line "$multimedia_recipe" 'RCONFLICTS:${PN}-gpu = "libegl-mesa libgles2-mesa libgbm"'
+for gpu_runtime in \
+  libEGL.so.1.5.0 \
+  libGAL.so \
+  libGLESv2.so.2.0.0 \
+  libGLSLC.so \
+  libNano2D.so \
+  libNano2Dutil.so \
+  libVSC.so \
+  libdrm_vivante.so.1.0.0 \
+  libgbm.so.1.0.0 \
+  libgbm_viv.so; do
+  rg -Fq -- "/usr/hobot/lib/${gpu_runtime}" "$multimedia_recipe" ||
+    fail "RDK X5 GPU runtime is missing: ${gpu_runtime}"
+done
 if rg -q 'libcjson\.so\.1\.7\.15|debian/usr/hobot/lib/\*' "$multimedia_recipe"; then
   fail "RDK X5 multimedia runtime must use the system cJSON provider and explicit vendor files"
 fi
+if sed '/^[[:space:]]*#/d' "$multimedia_recipe" |
+  rg -q 'virtual/(egl|libgl)|libOpenCL|libvulkan'; then
+  fail "RDK X5 runtime-only GPU package must not claim a build provider or include unreviewed compute APIs"
+fi
 if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$multimedia_recipe"; then
   fail "RDK X5 multimedia runtime must not bypass binary or dependency QA"
+fi
+
+multimedia_headers_recipe="$layer_dir/recipes-d-robotics/multimedia/hobot-multimedia-headers_3.0.4.bb"
+[ -f "$multimedia_headers_recipe" ] || fail "RDK X5 selected multimedia headers recipe is missing"
+require_line "$multimedia_headers_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$multimedia_headers_recipe" 'SRCREV_dev = "${RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV}"'
+require_line "$multimedia_headers_recipe" '        bbfatal "x5-hobot-multimedia-dev version drift: expected ${PV}, found $source_version"'
+require_line "$multimedia_headers_recipe" 'SYSROOT_DIRS:append = " /usr/hobot"'
+for selected_headers in EGL GLES2 KHR GC820 gbm.h; do
+  rg -Fq -- "$selected_headers" "$multimedia_headers_recipe" ||
+    fail "RDK X5 selected multimedia headers are missing: $selected_headers"
+done
+if sed '/^[[:space:]]*#/d' "$multimedia_headers_recipe" |
+  rg -q '(^|[ /])(CL|GLES(1|3)?|vulkan|VDK)(/|[[:space:]])'; then
+  fail "RDK X5 selected multimedia headers include an unreviewed graphics or compute API"
 fi
 
 dnn_recipe="$layer_dir/recipes-d-robotics/dnn/hobot-dnn_3.0.4.bb"
@@ -454,16 +492,22 @@ fi
 
 display_recipe="$layer_dir/recipes-d-robotics/display/rdk-x5-display_1.0.bb"
 display_modules="$layer_dir/recipes-d-robotics/display/files/30-rdk-x5-display.conf"
+display_smoke="$layer_dir/recipes-d-robotics/display/files/rdk-x5-gpu-smoke.c"
 libdrm_append="$layer_dir/recipes-graphics/drm/libdrm_%.bbappend"
 [ -f "$display_recipe" ] || fail "RDK X5 base display recipe is missing"
 [ -f "$display_modules" ] || fail "RDK X5 base display module policy is missing"
+[ -f "$display_smoke" ] || fail "RDK X5 GPU hardware smoke source is missing"
 [ -f "$libdrm_append" ] || fail "RDK X5 modetest package split is missing"
 require_line "$display_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$display_recipe" 'S = "${UNPACKDIR}"'
+require_line "$display_recipe" 'B = "${WORKDIR}/build"'
+require_line "$display_recipe" 'DEPENDS = "hobot-multimedia-headers"'
+require_line "$display_recipe" '    ${CC} ${CFLAGS} -I${RECIPE_SYSROOT}/usr/hobot/include ${LDFLAGS} \'
 require_line "$libdrm_append" 'PACKAGECONFIG:append:rdk-x5 = " tests install-test-programs"'
 require_line "$libdrm_append" 'PACKAGES:prepend:rdk-x5 = "${PN}-modetest "'
 require_line "$libdrm_append" 'FILES:${PN}-modetest:rdk-x5 = "${bindir}/modetest"'
 for display_dependency in \
+  hobot-multimedia-gpu \
   libdrm-modetest \
   kernel-module-drm-kms-helper \
   kernel-module-galcore \
@@ -473,6 +517,27 @@ for display_dependency in \
   kernel-module-vs-x5-syscon-bridge; do
   rg -q "^[[:space:]]*${display_dependency}[[:space:]]*\\\\$" "$display_recipe" ||
     fail "RDK X5 base display recipe is missing: $display_dependency"
+done
+for official_gpu_header in \
+  '#include <EGL/egl.h>' \
+  '#include <EGL/eglext.h>' \
+  '#include <GLES2/gl2.h>' \
+  '#include <GC820/nano2D.h>' \
+  '#include <gbm.h>'; do
+  require_line "$display_smoke" "$official_gpu_header"
+done
+if rg -q '^typedef .*EGL(Display|Config|Surface|Context)|^#define (EGL|GL)_' "$display_smoke"; then
+  fail "RDK X5 GPU smoke must use the pinned official API headers, not a local ABI copy"
+fi
+for gpu_smoke_contract in \
+  'dlopen("libEGL.so.1", RTLD_NOW | RTLD_LOCAL)' \
+  'dlopen("libGLESv2.so.2", RTLD_NOW | RTLD_LOCAL)' \
+  'dlopen("libNano2D.so", RTLD_NOW | RTLD_LOCAL)' \
+  'eglGetPlatformDisplayEXT' \
+  'n2d_open' \
+  'RDK_X5_GPU_SMOKE_PASS'; do
+  rg -Fq -- "$gpu_smoke_contract" "$display_smoke" ||
+    fail "RDK X5 GPU smoke is missing contract: $gpu_smoke_contract"
 done
 for display_module in \
   galcore \
