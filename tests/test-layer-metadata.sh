@@ -54,7 +54,8 @@ for matrix_entry in \
   '| `hobot-bpu-driver` and generated `kernel-module-bpu-hw-io-x5-*` | `3.5.0` | `RDK_X5_SRCREV_HOBOT_DRIVERS` |' \
   '| `hobot-camera` | `3.1.1` | `RDK_X5_SRCREV_HOBOT_CAMERA`, `RDK_X5_SRCREV_LIBCAM_SENSOR`, `RDK_X5_SRCREV_LIBCAM_INC`, `RDK_X5_SRCREV_HOBOT_MULTIMEDIA_DEV`, `RDK_X5_SRCREV_TUNING_JSON` |' \
   '| `hobot-usb-gadget` | `3.0.7` | `RDK_X5_SRCREV_HOBOT_UTILS` |' \
-  '| `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` |'; do
+  '| `hobot-wifi` | `3.0.3` | `RDK_X5_SRCREV_HOBOT_WIFI` |' \
+  '| `hobot-qos` | `3.1.4` | `RDK_X5_SRCREV_HOBOT_CONFIGS` |'; do
   rg -Fq -- "$matrix_entry" "$source_matrix" ||
     fail "RDK X5 source matrix is missing recipe entry: ${matrix_entry}"
 done
@@ -75,7 +76,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio hobot-dtb-overlays rdk-x5-pinmux hobot-qos"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -475,6 +476,30 @@ for pinmux_guard in \
 done
 if rg -q 'subprocess\.(run|call|Popen).*shell[[:space:]]*=[[:space:]]*True|chmod\([^)]*0o?777' "$pinmux_tool"; then
   fail "RDK X5 guarded pinmux tool contains an unsafe shell or permission policy"
+fi
+
+qos_recipe="$layer_dir/recipes-d-robotics/policy/hobot-qos_3.1.4.bb"
+qos_tool="$layer_dir/recipes-d-robotics/policy/files/rdk-x5-qos"
+qos_service="$layer_dir/recipes-d-robotics/policy/files/rdk-x5-qos.service"
+[ -f "$qos_recipe" ] || fail "RDK X5 NoC QoS recipe is missing"
+[ -f "$qos_tool" ] || fail "RDK X5 NoC QoS helper is missing"
+[ -f "$qos_service" ] || fail "RDK X5 NoC QoS service is missing"
+require_line "$qos_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$qos_recipe" 'SRCREV_configs = "${RDK_X5_SRCREV_HOBOT_CONFIGS}"'
+require_line "$qos_recipe" 'S = "${UNPACKDIR}/${BP}"'
+require_line "$qos_recipe" 'inherit systemd'
+require_line "$qos_recipe" 'SYSTEMD_SERVICE:${PN} = "rdk-x5-qos.service"'
+require_line "$qos_service" 'Type=oneshot'
+require_line "$qos_service" 'ExecStart=/usr/libexec/rdk-x5-qos apply'
+require_line "$qos_service" 'ConditionPathExists=/sys/bus/platform/drivers/noc_qos'
+require_line "$qos_service" 'NoNewPrivileges=yes'
+require_line "$qos_tool" '20510500.sif_qos 7 7'
+require_line "$qos_tool" '20520000.bpu_qos 0 0'
+require_line "$qos_tool" '20550100.gmac_qos 0 0'
+sh -n "$qos_tool" || fail "RDK X5 NoC QoS helper has invalid shell syntax"
+if sed '/^[[:space:]]*#/d' "$qos_recipe" "$qos_tool" "$qos_service" |
+  rg -q 'chmod[[:space:]]+777|NetworkManager|apt|autologin|resizefs'; then
+  fail "RDK X5 NoC QoS package imports unrelated or unsafe vendor policy"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"

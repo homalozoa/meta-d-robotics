@@ -36,7 +36,7 @@ and optional hardware surfaces remain independently testable.
 | HDMI and graphics | Galcore GPU, N2D, SII9022 bridge and VeriSilicon DRM pipeline | Implemented; hardware validation pending | `/dev/dri` nodes, connector/mode enumeration, HDMI hotplug and framebuffer/DRM smoke |
 | Native camera and codec pipeline | ISC/camera wrapper, VIN/SIF/ISP/VSE, OSD/GDC, VPU/JPU | Native module closure implemented; end-to-end hardware validation pending | Module binding, media graph, sensor probe, one captured frame, encode/decode smoke, then BPU inference |
 | 40-pin control and overlays | `hobot-io`, pinmux overlays and GPIO/SPI/I2C/UART/PWM helpers | Official Python GPIO API, source-built production overlays, and guarded dry-run/confirm/backup workflow implemented; hardware validation pending | Python import/pin map, overlay round trip, reboot persistence, GPIO line test and one test per enabled bus |
-| Power, thermal and QoS | CPU policy, QoS setup, suspend button and board status policy from `hobot-configs` | Not audited for Yocto policy yet | Thermal zones/cooling, frequency policy, suspend/resume and idle stability |
+| Power, thermal and QoS | CPU policy, QoS setup, suspend button and board status policy from `hobot-configs` | Exact NoC QoS table implemented as a verified systemd oneshot; CPU/thermal overrides and suspend remain separate pending work | QoS readback, thermal zones/cooling, frequency policy, suspend/resume and idle stability |
 | DSI panels and audio HATs | Versioned display/audio overlays | Missing and intentionally optional | Build each overlay from the pinned kernel DT headers and test only on matching hardware |
 
 ## Delivery order
@@ -48,8 +48,8 @@ and optional hardware surfaces remain independently testable.
 4. Validate the guarded `x5-hobot-io` pinmux and overlay workflow on both
    supported board IDs; keep permissive vendor udev rules and host-built
    archives excluded.
-5. Port only the board-relevant power, thermal and QoS policy from
-   `x5-hobot-configs` as reviewable systemd units.
+5. Validate the source-pinned NoC QoS service, then port guarded CPU/thermal
+   overrides and suspend/resume separately from `x5-hobot-configs`.
 6. Add DSI and audio-HAT overlays as opt-in packages after base-board tests.
 
 ## Test cadence

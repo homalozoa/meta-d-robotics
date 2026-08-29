@@ -1,0 +1,142 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Yocto-native translation of the RDKOS 3.5.0 x5-hobot-configs NoC QoS
+# policy.  Missing engines are optional; an engine that exists but cannot be
+# configured or verified is an error.
+
+set -u
+
+usage()
+{
+    printf 'Usage: %s {apply|check}\n' "$0" >&2
+}
+
+action=${1:-}
+if [ "$#" -ne 1 ] || { [ "$action" != "apply" ] && [ "$action" != "check" ]; }; then
+    usage
+    exit 2
+fi
+
+sysfs_root=${RDK_X5_QOS_SYSFS_ROOT:-/sys}
+case "$sysfs_root" in
+    /*) ;;
+    *)
+        printf 'rdk-x5-qos: sysfs root must be absolute: %s\n' "$sysfs_root" >&2
+        exit 2
+        ;;
+esac
+if [ ! -d "$sysfs_root" ]; then
+    printf 'rdk-x5-qos: sysfs root is not a directory: %s\n' "$sysfs_root" >&2
+    exit 1
+fi
+
+soc_name_file="$sysfs_root/class/socinfo/soc_name"
+if [ ! -r "$soc_name_file" ]; then
+    printf 'rdk-x5-qos: cannot read X5 SOC identity: %s\n' "$soc_name_file" >&2
+    exit 1
+fi
+soc_name=
+IFS= read -r soc_name < "$soc_name_file" || true
+case "$soc_name" in
+    *[xX]5*) ;;
+    *)
+        printf 'rdk-x5-qos: expected an X5 SOC, found "%s"\n' "$soc_name" >&2
+        exit 1
+        ;;
+esac
+
+read_qos_value()
+{
+    qos_raw=
+    if ! IFS= read -r qos_raw < "$1"; then
+        return 1
+    fi
+    qos_raw=${qos_raw##* }
+    case "$qos_raw" in
+        [0-7])
+            printf '%s\n' "$qos_raw"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+qos_base="$sysfs_root/bus/platform/drivers/noc_qos"
+present=0
+missing=0
+failures=0
+
+while IFS=' ' read -r qos_module expected_read expected_write; do
+    [ -n "$qos_module" ] || continue
+    read_priority="$qos_base/$qos_module/read_priority_qos_ctrl/priority"
+    write_priority="$qos_base/$qos_module/write_priority_qos_ctrl/priority"
+
+    if [ ! -e "$read_priority" ] || [ ! -e "$write_priority" ]; then
+        printf 'qos: %s skipped (not present)\n' "$qos_module"
+        missing=$((missing + 1))
+        continue
+    fi
+    present=$((present + 1))
+
+    if [ "$action" = "apply" ]; then
+        if [ ! -w "$read_priority" ] || [ ! -w "$write_priority" ]; then
+            printf 'rdk-x5-qos: %s priority attributes are not writable\n' \
+                "$qos_module" >&2
+            failures=$((failures + 1))
+            continue
+        fi
+        if ! printf '%s\n' "$expected_read" > "$read_priority"; then
+            printf 'rdk-x5-qos: failed to set %s read priority\n' \
+                "$qos_module" >&2
+            failures=$((failures + 1))
+            continue
+        fi
+        if ! printf '%s\n' "$expected_write" > "$write_priority"; then
+            printf 'rdk-x5-qos: failed to set %s write priority\n' \
+                "$qos_module" >&2
+            failures=$((failures + 1))
+            continue
+        fi
+    fi
+
+    if ! actual_read=$(read_qos_value "$read_priority"); then
+        printf 'rdk-x5-qos: cannot parse %s read priority\n' "$qos_module" >&2
+        failures=$((failures + 1))
+        continue
+    fi
+    if ! actual_write=$(read_qos_value "$write_priority"); then
+        printf 'rdk-x5-qos: cannot parse %s write priority\n' "$qos_module" >&2
+        failures=$((failures + 1))
+        continue
+    fi
+    if [ "$actual_read" != "$expected_read" ] || \
+       [ "$actual_write" != "$expected_write" ]; then
+        printf 'rdk-x5-qos: %s mismatch: read=%s/%s write=%s/%s\n' \
+            "$qos_module" "$actual_read" "$expected_read" \
+            "$actual_write" "$expected_write" >&2
+        failures=$((failures + 1))
+        continue
+    fi
+    printf 'qos: %s read=%s write=%s (%s)\n' \
+        "$qos_module" "$actual_read" "$actual_write" "$action"
+done <<'EOF'
+20510500.sif_qos 7 7
+20510280.isp_qos 7 7
+20510100.dw230_qos 7 7
+20540080.gpu3d_qos 0 0
+20520000.bpu_qos 0 0
+20540000.gpu2d_qos 0 0
+20550100.gmac_qos 0 0
+20510000.bt1120_qos 0 0
+20510080.dc8000_qos 0 0
+20530000.video_qos 0 0
+20530080.jpeg_qos 0 0
+EOF
+
+printf 'qos-summary: present=%s missing=%s failures=%s action=%s\n' \
+    "$present" "$missing" "$failures" "$action"
+if [ "$failures" -ne 0 ]; then
+    exit 1
+fi

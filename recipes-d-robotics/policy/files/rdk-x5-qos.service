@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+
+[Unit]
+Description=Apply D-Robotics RDK X5 NoC QoS priorities
+Documentation=https://github.com/D-Robotics/x5-hobot-configs
+After=systemd-modules-load.service
+ConditionPathExists=/sys/bus/platform/drivers/noc_qos
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/rdk-x5-qos apply
+RemainAfterExit=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=-/sys/bus/platform/drivers/noc_qos
+
+[Install]
+WantedBy=multi-user.target

@@ -127,6 +127,23 @@ The tool does not guess what is attached to the 40-pin header.  Enabling a bus
 or overlay remains an operator decision, and hardware tests must be limited to
 known attached devices.
 
+## NoC QoS policy
+
+The machine applies the exact RDKOS 3.5.0 NoC read/write priority table at
+boot through `rdk-x5-qos.service`.  The helper verifies every write against
+the kernel's `noc_qos` sysfs ABI and treats an existing-but-unwritable or
+mismatched engine as an error.  Engines absent from a particular hardware
+graph are reported and skipped, matching the vendor policy.  Inspect the live
+state without changing it with:
+
+```sh
+rdk-x5-qos check
+```
+
+Only this fixed, board-relevant policy is selected from `x5-hobot-configs`.
+Its Ubuntu desktop, NetworkManager, APT, automatic privilege, resize, and
+first-run policies are not installed.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only
