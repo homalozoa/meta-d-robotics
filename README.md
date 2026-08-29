@@ -80,6 +80,15 @@ libdrm diagnostics, including `modetest`, are available for connector and mode
 validation.  DSI panel drivers and overlays remain opt-in because they change
 the board's display graph and require matching panel hardware.
 
+## 40-pin GPIO
+
+The base machine builds the official RDKOS 3.5.0 `Hobot.GPIO` Python package
+from source, including its board-ID-aware RDK X5 pin map and `RPi.GPIO`
+compatibility namespace.  Access remains root-only: the vendor udev rule that
+makes GPIO, PWM, SPI, galcore, and nano2d world-writable is not installed.
+Pinmux changes and overlays remain a separate protected workflow because they
+can disable conflicting buses and only take effect after reboot.
+
 ## Dependencies
 
 The initial layer depends on OpenEmbedded-Core and declares compatibility only

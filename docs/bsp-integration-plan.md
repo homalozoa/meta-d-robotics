@@ -35,7 +35,7 @@ and optional hardware surfaces remain independently testable.
 | Onboard audio | DesignWare I2S, ES8326 codec, duplex sound-card drivers | Implemented; hardware validation pending | ALSA cards/PCMs enumerate; mixer read; bounded capture/playback tests with safe levels |
 | HDMI and graphics | Galcore GPU, N2D, SII9022 bridge and VeriSilicon DRM pipeline | Implemented; hardware validation pending | `/dev/dri` nodes, connector/mode enumeration, HDMI hotplug and framebuffer/DRM smoke |
 | Native camera and codec pipeline | ISC/camera wrapper, VIN/SIF/ISP/VSE, OSD/GDC, VPU/JPU | Native module closure implemented; end-to-end hardware validation pending | Module binding, media graph, sensor probe, one captured frame, encode/decode smoke, then BPU inference |
-| 40-pin control and overlays | `hobot-io`, `hb_dtb_tool`, pinmux overlays and GPIO/SPI/I2C/UART/PWM helpers | Missing | Overlay round trip, reboot persistence, GPIO line test and one test per enabled bus |
+| 40-pin control and overlays | `hobot-io`, pinmux overlays and GPIO/SPI/I2C/UART/PWM helpers | Official Python GPIO API implemented root-only; protected pinmux/overlay workflow pending | Python import/pin map, overlay round trip, reboot persistence, GPIO line test and one test per enabled bus |
 | Power, thermal and QoS | CPU policy, QoS setup, suspend button and board status policy from `hobot-configs` | Not audited for Yocto policy yet | Thermal zones/cooling, frequency policy, suspend/resume and idle stability |
 | DSI panels and audio HATs | Versioned display/audio overlays | Missing and intentionally optional | Build each overlay from the pinned kernel DT headers and test only on matching hardware |
 

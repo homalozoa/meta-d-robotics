@@ -75,7 +75,7 @@ require_line "$machine_conf" 'KERNEL_IMAGETYPE = "Image"'
 require_line "$machine_conf" 'KERNEL_DEVICETREE = "hobot/x5-rdk.dtb hobot/x5-rdk-v1p0.dtb"'
 require_line "$machine_conf" 'KERNEL_DTBDEST = "boot/hobot"'
 require_line "$machine_conf" 'SERIAL_CONSOLES = "115200;ttyS0"'
-require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display"'
+require_line "$machine_conf" 'MACHINE_ESSENTIAL_EXTRA_RDEPENDS += "kernel-image kernel-devicetree d-robotics-bootfiles hobot-usb-gadget hobot-wifi rdk-x5-peripherals rdk-x5-audio rdk-x5-display hobot-gpio"'
 
 kernel_recipe="$layer_dir/recipes-kernel/linux/linux-d-robotics_6.1.83.bb"
 [ -f "$kernel_recipe" ] || fail "RDK X5 kernel recipe is missing"
@@ -408,6 +408,19 @@ for display_module in \
 done
 if rg -q 'libdrm-tests|drm=1|panel-|^[[:space:]]*kernel-modules[[:space:]]' "$display_recipe" "$display_modules"; then
   fail "RDK X5 base display recipe contains Xorg-only policy or an optional panel"
+fi
+
+gpio_recipe="$layer_dir/recipes-d-robotics/io/hobot-gpio_3.1.4.bb"
+[ -f "$gpio_recipe" ] || fail "RDK X5 Hobot.GPIO recipe is missing"
+require_line "$gpio_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$gpio_recipe" 'SRCREV_io = "${RDK_X5_SRCREV_HOBOT_IO}"'
+require_line "$gpio_recipe" 'S = "${UNPACKDIR}/${BP}"'
+require_line "$gpio_recipe" 'inherit setuptools3'
+require_line "$gpio_recipe" 'SETUPTOOLS_SETUP_PATH = "${S}/hb_gpio_py/hobot-gpio"'
+require_line "$gpio_recipe" 'RDEPENDS:${PN} += "python3-core"'
+if sed '/^[[:space:]]*#/d' "$gpio_recipe" |
+  rg -q '99-gpio\.rules|libgpiod\.a|srpi-config|hb_dtb_tool'; then
+  fail "RDK X5 Hobot.GPIO recipe contains an unsafe or prebuilt adjacent component"
 fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
