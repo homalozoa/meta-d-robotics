@@ -31,6 +31,7 @@ and optional hardware surfaces remain independently testable.
 | BPU | `bpu_hw_io_x5` plus DNN runtime | Implemented in the accelerator image | HIMLoco inference smoke test and driver/device inspection |
 | USB device networking | RNDIS + ECM, `0525:a4a2`, device address `192.168.128.10/24` | Implemented without mass storage | Host enumerates both functions; DHCP-independent ping over `usb0`; clean restart and shutdown |
 | USB host Ethernet | USB CDC/RNDIS plus common Realtek, ASIX, LAN78xx, SMSC, Davicom, CoreChips, MosChip and SR adapters | Curated version-neutral module roots and USB-only networkd DHCP policy implemented | Hotplug at least one RTL8152/8153 and one CDC/ASIX adapter; link, DHCP, ping, unplug/replug and reboot tests |
+| USB serial and UVC | CDC ACM, CH341, CP210x, FTDI, PL2303 and USB Video Class | Curated Linux 6.1.83 module roots plus Wrynose `v4l2-ctl`/`media-ctl` diagnostics implemented | Hotplug representative serial adapters; stable `/dev/serial/by-id`, bounded loopback; enumerate a UVC camera and capture one frame |
 | Wi-Fi and Bluetooth | AIC8800D80 SDIO firmware/driver and UART5 Bluetooth at 1.5 Mbaud, no flow control | Implemented | `wlan0` scan, `hci0` readiness, rfkill and BlueZ checks |
 | Core board peripherals | HPU3501 RTC, ACT LED, TCAN4x5x, DT-declared SPI, I2C/GPIO tools | Implemented | RTC read, ACT trigger, SPI nodes, I2C enumeration, CAN loopback without external traffic |
 | Onboard audio | DesignWare I2S, ES8326 codec, duplex sound-card drivers | Implemented; hardware validation pending | ALSA cards/PCMs enumerate; mixer read; bounded capture/playback tests with safe levels |
@@ -42,16 +43,18 @@ and optional hardware surfaces remain independently testable.
 
 ## Delivery order
 
-1. Validate the onboard audio module and ALSA diagnostic package on hardware.
-2. Validate the base HDMI/DRM/2D display closure and DRM diagnostics.
-3. Validate the native camera, image-processing, VPU and JPU module closure;
+1. Validate common USB serial adapters, UVC cameras, and USB Ethernet adapters
+   on the actual host ports; keep cellular modem stacks opt-in.
+2. Validate the onboard audio module and ALSA diagnostic package on hardware.
+3. Validate the base HDMI/DRM/2D display closure and DRM diagnostics.
+4. Validate the native camera, image-processing, VPU and JPU module closure;
    keep V4L2 and native HBN modes separately selectable because they conflict.
-4. Validate the guarded `x5-hobot-io` pinmux and overlay workflow on both
+5. Validate the guarded `x5-hobot-io` pinmux and overlay workflow on both
    supported board IDs; keep permissive vendor udev rules and host-built
    archives excluded.
-5. Validate the source-pinned NoC QoS service, then port guarded CPU/thermal
+6. Validate the source-pinned NoC QoS service, then port guarded CPU/thermal
    overrides and suspend/resume separately from `x5-hobot-configs`.
-6. Add DSI and audio-HAT overlays as opt-in packages after base-board tests.
+7. Add DSI and audio-HAT overlays as opt-in packages after base-board tests.
 
 ## Test cadence
 

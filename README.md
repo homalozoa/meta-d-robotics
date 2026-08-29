@@ -48,6 +48,20 @@ Ethernet links whose udev bus property is USB.  Those links do not delay
 `network-online.target`, and the earlier board-specific `eth0`, `usb0`, and
 `usb1` profiles retain precedence.
 
+## USB serial and UVC peripherals
+
+The base machine includes the common CDC ACM, CH341, CP210x, FTDI, and PL2303
+USB serial drivers used by robot controllers, lidar units, GNSS receivers, and
+debug adapters.  It also includes the standard `uvcvideo` driver plus
+`v4l2-ctl` and `media-ctl` for USB camera inspection and bounded capture tests.
+Drivers load through kernel modaliases only when matching hardware is present.
+
+These standard USB Video Class devices are independent of the RDK X5 native
+HBN CSI camera pipeline.  The mutually exclusive native/V4L2 CSI wrapper modes
+remain separately selectable; adding UVC support does not switch that policy.
+Cellular modem protocols and device-specific firmware remain opt-in rather
+than being pulled into every board image.
+
 ## Onboard Wi-Fi and Bluetooth
 
 The machine installs only the RDKOS 3.5.0 AIC8800D80 firmware selected for the
