@@ -8,14 +8,10 @@ inherit packagegroup
 COMPATIBLE_MACHINE = "^rdk-x5$"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
-# These are the camera-facing roots of the 6.1.83 module dependency graph.
-# Their versioned RPM dependencies pull the matching camsys, PHY, VIO, VIN,
-# and sensor helper modules, so this group neither guesses a kernel release
-# nor installs the unrelated kernel-modules metapackage.
+# rdk-x5-media-modules owns the reviewed native-HBN module roots and load
+# order.  Keeping that policy in a normal recipe lets it ship a modules-load
+# file while this packagegroup remains a feature-level composition point.
 RDEPENDS:${PN} = " \
     hobot-camera \
-    kernel-module-hobot-mipicsi \
-    kernel-module-hobot-isi-sensor \
-    kernel-module-hobot-lpwm \
-    kernel-module-hobot-vin-vcon \
+    rdk-x5-media-modules \
 "

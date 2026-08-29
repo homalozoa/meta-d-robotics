@@ -118,6 +118,12 @@ contains the selected D-Robotics runtime libraries under `/usr/hobot`, the
 for `imx219`, `imx415`, `sc132gs`, and `sc230ai`.  It is not a generic camera
 enablement bundle; use only the matching board hardware and tuning data.
 
+The accelerator image also follows the RDKOS 3.5.0 default native-HBN media
+path: ISC/camera control, VIN/SIF/ISP/VSE, MIPI, OSD/GDC, codec vnode, VPU, and
+JPU modules load in the vendor-defined order.  The mutually exclusive V4L2
+wrapper path is not enabled implicitly; switching modes requires a separately
+reviewed image policy and matching userspace.
+
 The accelerator recipes make the compatibility boundary explicit:
 
 - Every vendor source is pinned in `rdk-x5-release.inc` to the RDKOS 3.5.0

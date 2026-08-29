@@ -412,21 +412,68 @@ fi
 
 camera_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-camera.bb"
 accelerator_group="$layer_dir/recipes-d-robotics/packagegroups/packagegroup-rdk-x5-accelerators.bb"
+media_recipe="$layer_dir/recipes-d-robotics/multimedia/rdk-x5-media-modules_1.0.bb"
+media_modules="$layer_dir/recipes-d-robotics/multimedia/files/40-rdk-x5-media.conf"
 [ -f "$camera_group" ] || fail "RDK X5 camera packagegroup is missing"
 [ -f "$accelerator_group" ] || fail "RDK X5 accelerator packagegroup is missing"
+[ -f "$media_recipe" ] || fail "RDK X5 native media module recipe is missing"
+[ -f "$media_modules" ] || fail "RDK X5 native media load policy is missing"
 for packagegroup_recipe in "$camera_group" "$accelerator_group"; do
   require_line "$packagegroup_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
   require_line "$packagegroup_recipe" 'inherit packagegroup'
 done
 for required_entry in \
   hobot-camera \
-  kernel-module-hobot-mipicsi \
-  kernel-module-hobot-isi-sensor \
-  kernel-module-hobot-lpwm \
-  kernel-module-hobot-vin-vcon; do
+  rdk-x5-media-modules; do
   rg -q "^[[:space:]]*${required_entry}[[:space:]]" "$camera_group" ||
     fail "RDK X5 camera packagegroup is missing: ${required_entry}"
 done
+require_line "$media_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
+require_line "$media_recipe" 'S = "${UNPACKDIR}"'
+for media_root in \
+  kernel-module-hobot-codec-vnode \
+  kernel-module-hobot-deserial \
+  kernel-module-hobot-gdc \
+  kernel-module-hobot-isi-sensor \
+  kernel-module-hobot-jpu \
+  kernel-module-hobot-lpwm \
+  kernel-module-hobot-mipidbg \
+  kernel-module-hobot-mipicsi \
+  kernel-module-hobot-osd \
+  kernel-module-hobot-vin-vcon \
+  kernel-module-hobot-vpu \
+  kernel-module-vs-csi-wrapper \
+  kernel-module-vs-sif-nat \
+  kernel-module-vs-vse-nat; do
+  rg -q "^[[:space:]]*${media_root}[[:space:]]*\\\\$" "$media_recipe" ||
+    fail "RDK X5 native media recipe is missing: ${media_root}"
+done
+for media_module in \
+  vs_isc \
+  vs_cam_ctrl \
+  vs_csi_wrapper \
+  hobot_codec_vnode \
+  hobot_vpu \
+  hobot_jpu \
+  hobot_osd \
+  hobot_vin_vnode \
+  hobot_vin_vcon \
+  vs_sif_nat \
+  hobot_sensor \
+  hobot_mipiphy \
+  hobot_mipicsi \
+  hobot_mipidbg \
+  vs_isp_nat \
+  vs_vse_nat \
+  hobot_deserial \
+  hobot_gdc \
+  hobot_isi_sensor \
+  hobot_lpwm; do
+  require_line "$media_modules" "$media_module"
+done
+if rg -q '(_v4l|-[^-[:space:]]*-v4l)|^[[:space:]]*kernel-modules[[:space:]]|kernel-module-[^[:space:]]*6\.1\.83' "$media_recipe" "$media_modules"; then
+  fail "RDK X5 native media policy mixes V4L2 mode or fixed/broad module packages"
+fi
 for required_entry in \
   hobot-dnn \
   hobot-bpu-driver \
@@ -434,7 +481,7 @@ for required_entry in \
   rg -q "^[[:space:]]*${required_entry}[[:space:]]" "$accelerator_group" ||
     fail "RDK X5 accelerator packagegroup is missing: ${required_entry}"
 done
-if rg -q '^[[:space:]]*kernel-modules[[:space:]]|^[[:space:]]*kernel-module-[^[:space:]]*6\.1\.83' "$camera_group" "$accelerator_group"; then
+if rg -q '^[[:space:]]*kernel-modules[[:space:]]|^[[:space:]]*kernel-module-[^[:space:]]*6\.1\.83' "$camera_group" "$accelerator_group" "$media_recipe"; then
   fail "RDK X5 accelerator packagegroups must use kernel module providers without a fixed release or broad module set"
 fi
 
