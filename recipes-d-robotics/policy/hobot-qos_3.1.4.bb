@@ -53,9 +53,9 @@ EOF
 
 do_install() {
     install -Dm 0755 ${UNPACKDIR}/rdk-x5-qos \
-        ${D}${libexecdir}/rdk-x5-qos
+        ${D}${sbindir}/rdk-x5-qos
     install -Dm 0644 ${UNPACKDIR}/rdk-x5-qos.service \
         ${D}${systemd_system_unitdir}/rdk-x5-qos.service
 }
 
-FILES:${PN} += "${libexecdir}/rdk-x5-qos"
+FILES:${PN} += "${sbindir}/rdk-x5-qos"

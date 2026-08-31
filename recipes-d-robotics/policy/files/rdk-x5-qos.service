@@ -8,7 +8,7 @@ ConditionPathExists=/sys/bus/platform/drivers/noc_qos
 
 [Service]
 Type=oneshot
-ExecStart=/usr/libexec/rdk-x5-qos apply
+ExecStart=/usr/sbin/rdk-x5-qos apply
 RemainAfterExit=yes
 NoNewPrivileges=yes
 PrivateTmp=yes
