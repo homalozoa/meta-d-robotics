@@ -93,10 +93,12 @@ in the foreground and waits for `hci0` before allowing BlueZ to start.
 ## Core board peripherals
 
 The base machine explicitly installs the module roots for the HPU3501 RTC,
-heartbeat status LED, TCAN4x5x CAN FD controller, and DT-declared spidev
-endpoints.  It also includes SocketCAN, I2C, GPIO, and `hwclock` tools so those
-interfaces can be tested without an additional debug image.  The dependency
-list is deliberately explicit; the layer never pulls the broad
+heartbeat status LED, GPIO power key event handler, TCAN4x5x CAN FD controller,
+and DT-declared spidev endpoints.  It also includes SocketCAN, I2C, GPIO,
+`evtest`, and `hwclock` tools so those interfaces can be tested without an
+additional debug image.  Loading `evdev` exposes the DT `gpio-keys` device as
+an event node, but the base layer does not attach an automatic suspend policy.
+The dependency list is deliberately explicit; the layer never pulls the broad
 `kernel-modules` package merely to make a device appear.
 
 The remaining RDKOS parity work, compatibility rules, and hardware acceptance

@@ -1,5 +1,5 @@
 SUMMARY = "Core RDK X5 board peripheral support"
-DESCRIPTION = "Explicit kernel module and userspace closure for the onboard RTC, status LED, CAN FD controller, SPI endpoints, I2C, and GPIO diagnostics."
+DESCRIPTION = "Explicit kernel module and userspace closure for the onboard RTC, status LED, power key, CAN FD controller, SPI endpoints, I2C, and GPIO diagnostics."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
@@ -14,10 +14,12 @@ S = "${UNPACKDIR}"
 # standard SocketCAN tools.
 RDEPENDS:${PN} = " \
     can-utils \
+    evtest \
     i2c-tools \
     libgpiod-tools \
     util-linux-hwclock \
     kernel-module-can-raw \
+    kernel-module-evdev \
     kernel-module-leds-gpio \
     kernel-module-rtc-hpu3501 \
     kernel-module-spidev \

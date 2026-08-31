@@ -448,10 +448,12 @@ require_line "$peripherals_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$peripherals_recipe" 'S = "${UNPACKDIR}"'
 for peripheral_dependency in \
   can-utils \
+  evtest \
   i2c-tools \
   libgpiod-tools \
   util-linux-hwclock \
   kernel-module-can-raw \
+  kernel-module-evdev \
   kernel-module-leds-gpio \
   kernel-module-rtc-hpu3501 \
   kernel-module-spidev \
@@ -461,6 +463,7 @@ for peripheral_dependency in \
 done
 for peripheral_module in \
   leds_gpio \
+  evdev \
   rtc_hpu3501 \
   spidev \
   tcan4x5x \
