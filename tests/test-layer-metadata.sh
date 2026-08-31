@@ -508,7 +508,9 @@ require_line "$libdrm_append" 'PACKAGECONFIG:append:rdk-x5 = " tests install-tes
 require_line "$libdrm_append" 'PACKAGES:prepend:rdk-x5 = "${PN}-modetest "'
 require_line "$libdrm_append" 'FILES:${PN}-modetest:rdk-x5 = "${bindir}/modetest"'
 for display_dependency in \
+  coreutils \
   hobot-multimedia-gpu \
+  libx11-xcb \
   libdrm-modetest \
   kernel-module-drm-kms-helper \
   kernel-module-galcore \

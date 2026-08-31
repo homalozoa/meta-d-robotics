@@ -19,7 +19,9 @@ B = "${WORKDIR}/build"
 # Dependencies generated from the pinned 6.1.83 modules pull the matching DRM
 # helpers, I2C mux, framebuffer helpers, and VIO common module.
 RDEPENDS:${PN} = " \
+    coreutils \
     hobot-multimedia-gpu \
+    libx11-xcb \
     libdrm-modetest \
     kernel-module-drm-kms-helper \
     kernel-module-galcore \
