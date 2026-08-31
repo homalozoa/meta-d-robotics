@@ -144,7 +144,7 @@ require_line "$multimedia_recipe" 'inherit rdk-x5-prebuilt-elf'
 require_line "$multimedia_recipe" 'RDK_X5_PREBUILT_ELF_MAX_GLIBC = "2.34"'
 require_line "$multimedia_recipe" 'SYSROOT_DIRS:append = " /usr/hobot"'
 require_line "$multimedia_recipe" 'INSANE_SKIP:${PN} += "libdir"'
-require_line "$multimedia_recipe" 'INSANE_SKIP:${PN}-gpu += "libdir"'
+require_line "$multimedia_recipe" 'INSANE_SKIP:${PN}-gpu += "libdir dev-so"'
 require_line "$multimedia_recipe" 'PACKAGES =+ "${PN}-loader ${PN}-gpu"'
 require_line "$multimedia_recipe" 'RDEPENDS:${PN}-gpu += "libdrm ${PN}-loader"'
 require_line "$multimedia_recipe" 'RCONFLICTS:${PN}-gpu = "libegl-mesa libgles2-mesa libgbm"'
@@ -171,8 +171,13 @@ if sed '/^[[:space:]]*#/d' "$multimedia_recipe" |
   rg -q 'virtual/(egl|libgl)|libOpenCL|libvulkan'; then
   fail "RDK X5 runtime-only GPU package must not claim a build provider or include unreviewed compute APIs"
 fi
-if rg -q 'INSANE_SKIP.*(already-stripped|dev-so|file-rdeps)' "$multimedia_recipe"; then
+require_line "$multimedia_recipe" '    ln -sf libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so'
+require_line "$multimedia_recipe" '    ln -sf libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so'
+if rg -q 'INSANE_SKIP.*(already-stripped|file-rdeps)' "$multimedia_recipe"; then
   fail "RDK X5 multimedia runtime must not bypass binary or dependency QA"
+fi
+if rg -F 'INSANE_SKIP:${PN} ' "$multimedia_recipe" | rg -q 'dev-so'; then
+  fail "RDK X5 base multimedia package must not bypass dev-so QA"
 fi
 
 multimedia_headers_recipe="$layer_dir/recipes-d-robotics/multimedia/hobot-multimedia-headers_3.0.4.bb"

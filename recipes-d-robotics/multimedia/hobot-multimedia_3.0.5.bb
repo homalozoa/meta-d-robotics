@@ -44,7 +44,10 @@ RDK_X5_PREBUILT_ELF_MAX_GLIBC = "2.34"
 # RDKOS clients have a fixed /usr/hobot/lib ABI path.  Keep that vendor path
 # rather than relocating binaries and silently breaking their loader contract.
 INSANE_SKIP:${PN} += "libdir"
-INSANE_SKIP:${PN}-gpu += "libdir"
+# Vivante EGL dlopens these official bare-name symlinks at runtime.  Keep the
+# exception scoped to this package; it is an ABI requirement, not a development
+# provider declaration.
+INSANE_SKIP:${PN}-gpu += "libdir dev-so"
 
 do_configure[noexec] = "1"
 do_compile[noexec] = "1"
@@ -77,16 +80,16 @@ do_install() {
 
     # Install only the runtime-facing Vivante/Nano2D ABI.  The vendor EGL
     # implementation dlopens the bare libEGL.so and libGLESv2.so names at
-    # runtime, so keep those two names as hard links to the audited payloads.
-    # Hard links preserve normal dev-so QA while satisfying the vendor runtime
-    # contract; other linker names and all OpenCL/Vulkan components stay out.
+    # runtime, so keep the two official symlinks.  A hard link is not
+    # equivalent: the vendor loader then fails to register the GLES API.
+    # Other linker names and all OpenCL/Vulkan components stay out.
     install -m 0644 ${S}/debian/usr/hobot/lib/libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so.1.5.0
     ln -sf libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so.1
-    ln ${D}/usr/hobot/lib/libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so
+    ln -sf libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so
 
     install -m 0644 ${S}/debian/usr/hobot/lib/libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so.2.0.0
     ln -sf libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so.2
-    ln ${D}/usr/hobot/lib/libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so
+    ln -sf libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so
 
     install -m 0644 ${S}/debian/usr/hobot/lib/libGAL.so ${D}/usr/hobot/lib/libGAL.so
     install -m 0644 ${S}/debian/usr/hobot/lib/libVSC.so ${D}/usr/hobot/lib/libVSC.so
