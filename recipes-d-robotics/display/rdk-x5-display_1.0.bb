@@ -21,7 +21,6 @@ B = "${WORKDIR}/build"
 RDEPENDS:${PN} = " \
     coreutils \
     hobot-multimedia-gpu \
-    libx11-xcb \
     libdrm-modetest \
     kernel-module-drm-kms-helper \
     kernel-module-galcore \

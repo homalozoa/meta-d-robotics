@@ -149,8 +149,10 @@ require_line "$multimedia_recipe" 'PACKAGES =+ "${PN}-loader ${PN}-gpu"'
 require_line "$multimedia_recipe" 'RDEPENDS:${PN}-gpu += "libdrm ${PN}-loader"'
 require_line "$multimedia_recipe" 'RCONFLICTS:${PN}-gpu = "libegl-mesa libgles2-mesa libgbm"'
 for gpu_runtime in \
+  libEGL.so \
   libEGL.so.1.5.0 \
   libGAL.so \
+  libGLESv2.so \
   libGLESv2.so.2.0.0 \
   libGLSLC.so \
   libNano2D.so \
@@ -510,7 +512,6 @@ require_line "$libdrm_append" 'FILES:${PN}-modetest:rdk-x5 = "${bindir}/modetest
 for display_dependency in \
   coreutils \
   hobot-multimedia-gpu \
-  libx11-xcb \
   libdrm-modetest \
   kernel-module-drm-kms-helper \
   kernel-module-galcore \
@@ -536,6 +537,7 @@ for gpu_smoke_contract in \
   'dlopen("libEGL.so.1", RTLD_NOW | RTLD_LOCAL)' \
   'dlopen("libGLESv2.so.2", RTLD_NOW | RTLD_LOCAL)' \
   'dlopen("libNano2D.so", RTLD_NOW | RTLD_LOCAL)' \
+  'setenv("VIV_EGL_PLATFORM", "gbm", 0)' \
   'eglGetPlatformDisplayEXT' \
   'n2d_open' \
   'RDK_X5_GPU_SMOKE_PASS'; do

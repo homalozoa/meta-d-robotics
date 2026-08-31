@@ -237,6 +237,20 @@ int main(int argc, char **argv)
     if (argc == 2)
         requested_device = argv[1];
 
+    /*
+     * RDKOS selects the Vivante window-system backend through this vendor
+     * variable.  Its default is X11 and dereferences a missing X display on a
+     * headless image, even when eglGetPlatformDisplayEXT receives a GBM
+     * device.  Preserve an explicit caller override, otherwise select the
+     * hardware GBM backend used by this diagnostic.
+     */
+    if (getenv("VIV_EGL_PLATFORM") == NULL &&
+        setenv("VIV_EGL_PLATFORM", "gbm", 0) != 0) {
+        fprintf(stderr, "cannot select Vivante GBM platform: %s\n",
+                strerror(errno));
+        goto out;
+    }
+
     egl_library = dlopen("libEGL.so.1", RTLD_NOW | RTLD_LOCAL);
     if (egl_library == NULL) {
         fprintf(stderr, "cannot load libEGL.so.1: %s\n", dlerror());

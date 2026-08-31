@@ -75,15 +75,18 @@ do_install() {
     install -m 0644 ${S}/debian/usr/hobot/lib/libmultimedia.so.1.2.3 ${D}/usr/hobot/lib/libmultimedia.so.1.2.3
     ln -sf libmultimedia.so.1.2.3 ${D}/usr/hobot/lib/libmultimedia.so.1
 
-    # Install only the runtime-facing Vivante/Nano2D ABI.  Unversioned EGL,
-    # GLESv2, DRM, and GBM linker symlinks and all OpenCL/Vulkan components are
-    # excluded until a separately reviewed development or compute package is
-    # available for this exact release.
+    # Install only the runtime-facing Vivante/Nano2D ABI.  The vendor EGL
+    # implementation dlopens the bare libEGL.so and libGLESv2.so names at
+    # runtime, so keep those two names as hard links to the audited payloads.
+    # Hard links preserve normal dev-so QA while satisfying the vendor runtime
+    # contract; other linker names and all OpenCL/Vulkan components stay out.
     install -m 0644 ${S}/debian/usr/hobot/lib/libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so.1.5.0
     ln -sf libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so.1
+    ln ${D}/usr/hobot/lib/libEGL.so.1.5.0 ${D}/usr/hobot/lib/libEGL.so
 
     install -m 0644 ${S}/debian/usr/hobot/lib/libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so.2.0.0
     ln -sf libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so.2
+    ln ${D}/usr/hobot/lib/libGLESv2.so.2.0.0 ${D}/usr/hobot/lib/libGLESv2.so
 
     install -m 0644 ${S}/debian/usr/hobot/lib/libGAL.so ${D}/usr/hobot/lib/libGAL.so
     install -m 0644 ${S}/debian/usr/hobot/lib/libVSC.so ${D}/usr/hobot/lib/libVSC.so
@@ -128,9 +131,11 @@ FILES:${PN} += " \
 "
 
 FILES:${PN}-gpu = " \
+    /usr/hobot/lib/libEGL.so \
     /usr/hobot/lib/libEGL.so.1 \
     /usr/hobot/lib/libEGL.so.1.5.0 \
     /usr/hobot/lib/libGAL.so \
+    /usr/hobot/lib/libGLESv2.so \
     /usr/hobot/lib/libGLESv2.so.2 \
     /usr/hobot/lib/libGLESv2.so.2.0.0 \
     /usr/hobot/lib/libGLSLC.so \

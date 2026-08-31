@@ -119,10 +119,12 @@ validation.  It also installs the EGL 1, GLESv2, Vivante GBM/DRM, shader
 compiler, and Nano2D runtime closure from the same pinned RDKOS multimedia
 revision.  This is a runtime package rather than a `virtual/egl` development
 provider: the exact RDKOS 3.5.0 development repository supplies the selected
-EGL/GLES2/GBM/Nano2D headers to dependent recipe sysroots, but unversioned
-linker interfaces and global provider policy remain excluded.  Mixing the
-runtime with Mesa's same-SONAME packages is rejected.  OpenCL, Vulkan, GLES1,
-and GLES3 remain separately reviewable rather than entering the base image.
+EGL/GLES2/GBM/Nano2D headers to dependent recipe sysroots.  The two bare EGL
+and GLES2 names that the vendor EGL implementation loads at runtime are kept
+as hard links to the audited versioned payloads; other unversioned linker
+interfaces and global provider policy remain excluded.  Mixing the runtime
+with Mesa's same-SONAME packages is rejected.  OpenCL, Vulkan, GLES1, and
+GLES3 remain separately reviewable rather than entering the base image.
 DSI panel drivers and overlays remain opt-in because they change the board's
 display graph and require matching panel hardware.
 
