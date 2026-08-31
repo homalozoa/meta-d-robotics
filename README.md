@@ -50,13 +50,15 @@ Ethernet links whose udev bus property is USB.  Those links do not delay
 USB Ethernet driver, PHY negotiation, and link state can be inspected during
 hardware acceptance tests.
 
-## USB serial and UVC peripherals
+## USB serial, HID, and UVC peripherals
 
 The base machine includes the common CDC ACM, CH341, CP210x, FTDI, and PL2303
 USB serial drivers used by robot controllers, lidar units, GNSS receivers, and
-debug adapters.  It also includes the standard `uvcvideo` driver plus
-`v4l2-ctl` and `media-ctl` for USB camera inspection and bounded capture tests.
-Drivers load through kernel modaliases only when matching hardware is present.
+debug adapters.  The pinned kernel builds generic HID and USB HID support in;
+the image loads their modular `evdev` userspace interface and includes
+`evtest`.  It also includes the standard `uvcvideo` driver plus `v4l2-ctl` and
+`media-ctl` for USB camera inspection and bounded capture tests.  Device
+drivers load through kernel modaliases only when matching hardware is present.
 
 These standard USB Video Class devices are independent of the RDK X5 native
 HBN CSI camera pipeline.  The mutually exclusive native/V4L2 CSI wrapper modes
@@ -93,13 +95,18 @@ in the foreground and waits for `hci0` before allowing BlueZ to start.
 ## Core board peripherals
 
 The base machine explicitly installs the module roots for the HPU3501 RTC,
-heartbeat status LED, GPIO power key event handler, TCAN4x5x CAN FD controller,
-and DT-declared spidev endpoints.  It also includes SocketCAN, I2C, GPIO,
-`evtest`, and `hwclock` tools so those interfaces can be tested without an
-additional debug image.  Loading `evdev` exposes the DT `gpio-keys` device as
-an event node, but the base layer does not attach an automatic suspend policy.
-The dependency list is deliberately explicit; the layer never pulls the broad
+heartbeat status LED, TCAN4x5x CAN FD controller, and DT-declared spidev
+endpoints.  It also includes SocketCAN, I2C, GPIO, and `hwclock` tools so those
+interfaces can be tested without an additional debug image.  The dependency
+list is deliberately explicit; the layer never pulls the broad
 `kernel-modules` package merely to make a device appear.
+
+The pinned vendor `x5-rdk-v1p0.dtb` exposes an AON GPIO2 `KEY_WAKEUP` node,
+but RDK X5 V1.0 (board ID 302) has no user-facing Sleep button.  That node is
+kept as part of the vendor DT ABI and is not treated as a supported physical
+input or as justification for an automatic suspend policy.  X5 Module Carrier
+Board suspend support requires a separate machine/DT contract and hardware
+acceptance on that product.
 
 The remaining RDKOS parity work, compatibility rules, and hardware acceptance
 gates are tracked in [docs/bsp-integration-plan.md](docs/bsp-integration-plan.md).

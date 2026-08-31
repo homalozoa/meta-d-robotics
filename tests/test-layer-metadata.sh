@@ -341,14 +341,18 @@ if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$usb_host_recipe"; then
 fi
 
 usb_peripherals_recipe="$layer_dir/recipes-d-robotics/usb/rdk-x5-usb-peripherals_1.0.bb"
+usb_input_modules="$layer_dir/recipes-d-robotics/usb/files/30-rdk-x5-usb-input.conf"
 [ -f "$usb_peripherals_recipe" ] || fail "RDK X5 USB peripheral recipe is missing"
+[ -f "$usb_input_modules" ] || fail "RDK X5 USB input module policy is missing"
 require_line "$usb_peripherals_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$usb_peripherals_recipe" 'PACKAGE_ARCH = "${MACHINE_ARCH}"'
-require_line "$usb_peripherals_recipe" 'ALLOW_EMPTY:${PN} = "1"'
+require_line "$usb_peripherals_recipe" 'S = "${UNPACKDIR}"'
 for usb_peripheral_dependency in \
+  evtest \
   kernel-module-cdc-acm \
   kernel-module-ch341 \
   kernel-module-cp210x \
+  kernel-module-evdev \
   kernel-module-ftdi-sio \
   kernel-module-pl2303 \
   kernel-module-uvcvideo \
@@ -357,6 +361,7 @@ for usb_peripheral_dependency in \
   rg -q "^[[:space:]]*${usb_peripheral_dependency}[[:space:]]*\\\\$" "$usb_peripherals_recipe" ||
     fail "RDK X5 USB peripheral recipe is missing: ${usb_peripheral_dependency}"
 done
+require_line "$usb_input_modules" 'evdev'
 if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$usb_peripherals_recipe"; then
   fail "RDK X5 USB peripherals must not pull the broad kernel-modules package"
 fi
@@ -448,12 +453,10 @@ require_line "$peripherals_recipe" 'COMPATIBLE_MACHINE = "^rdk-x5$"'
 require_line "$peripherals_recipe" 'S = "${UNPACKDIR}"'
 for peripheral_dependency in \
   can-utils \
-  evtest \
   i2c-tools \
   libgpiod-tools \
   util-linux-hwclock \
   kernel-module-can-raw \
-  kernel-module-evdev \
   kernel-module-leds-gpio \
   kernel-module-rtc-hpu3501 \
   kernel-module-spidev \
@@ -463,7 +466,6 @@ for peripheral_dependency in \
 done
 for peripheral_module in \
   leds_gpio \
-  evdev \
   rtc_hpu3501 \
   spidev \
   tcan4x5x \
@@ -472,6 +474,13 @@ for peripheral_module in \
 done
 if rg -q '^[[:space:]]*kernel-modules[[:space:]]' "$peripherals_recipe"; then
   fail "RDK X5 core peripherals must not pull the broad kernel-modules package"
+fi
+
+readme="$layer_dir/README.md"
+integration_plan="$layer_dir/docs/bsp-integration-plan.md"
+require_line "$readme" 'but RDK X5 V1.0 (board ID 302) has no user-facing Sleep button.  That node is'
+if rg -q 'GPIO power key|Add identity-based sleep-button discovery' "$readme" "$integration_plan"; then
+  fail "RDK X5 V1.0 must not advertise a user-facing Sleep button"
 fi
 
 audio_recipe="$layer_dir/recipes-d-robotics/audio/rdk-x5-audio_1.0.bb"
