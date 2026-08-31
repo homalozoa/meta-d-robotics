@@ -481,7 +481,6 @@ for audio_dependency in \
   alsa-utils-amixer \
   alsa-utils-aplay \
   kernel-module-designware-i2s \
-  kernel-module-snd-soc-duplex-card \
   kernel-module-snd-soc-es8326 \
   kernel-module-snd-soc-hobot-sound-duplex-host; do
   rg -q "^[[:space:]]*${audio_dependency}[[:space:]]*\\\\$" "$audio_recipe" ||
@@ -490,12 +489,14 @@ done
 for audio_module in \
   designware_i2s \
   snd_soc_es8326 \
-  snd_soc_duplex_card \
   snd_soc_hobot_sound_duplex_host; do
   require_line "$audio_modules" "$audio_module"
 done
-if rg -q 'audio_gadget|kernel-module-es8311|^[[:space:]]*kernel-modules[[:space:]]' "$audio_recipe"; then
+if rg -q 'audio_gadget|kernel-module-es8311|kernel-module-snd-soc-duplex-card|^[[:space:]]*kernel-modules[[:space:]]' "$audio_recipe"; then
   fail "RDK X5 onboard audio recipe contains an inactive or unsafe dependency"
+fi
+if rg -q '^snd_soc_duplex_card$' "$audio_modules"; then
+  fail "RDK X5 onboard audio policy loads the inactive virtual duplex card"
 fi
 
 display_recipe="$layer_dir/recipes-d-robotics/display/rdk-x5-display_1.0.bb"

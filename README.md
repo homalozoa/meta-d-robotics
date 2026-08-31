@@ -104,10 +104,12 @@ gates are tracked in [docs/bsp-integration-plan.md](docs/bsp-integration-plan.md
 
 ## Onboard audio
 
-The base machine installs the module roots for the two DesignWare I2S links,
-the onboard ES8326 codec, and both DT-enabled duplex sound cards.  `aplay`,
-`arecord`, and `amixer` are included for bounded hardware tests.  The legacy
-RDKOS `audio_gadget` boot helper is deliberately excluded because it changes
+The base machine installs the module roots for the active DesignWare I2S0,
+onboard ES8326 codec, and Hobot duplex-host sound card.  `aplay`, `arecord`,
+and `amixer` are included for bounded hardware tests.  The virtual
+`duplex_card` path is excluded because its second link references disabled
+I2S1 and otherwise remains in deferred probe.  The legacy RDKOS
+`audio_gadget` boot helper is also deliberately excluded because it changes
 mixer state and starts playback and capture on every boot.
 
 ## HDMI and graphics
