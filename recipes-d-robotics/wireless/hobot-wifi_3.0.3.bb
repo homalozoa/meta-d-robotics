@@ -27,6 +27,18 @@ BB_GIT_SHALLOW_DEPTH_wifi ?= "1"
 
 inherit systemd
 
+# Keep the BSP usable without an integration distro: by default it installs
+# the original standalone wpa_supplicant + systemd-networkd policy.  Images
+# which provide another Wi-Fi manager can remove this feature without also
+# losing the board-specific firmware, antenna setup, or Bluetooth support.
+PACKAGECONFIG ??= "standalone-wifi"
+PACKAGECONFIG[standalone-wifi] = ",,,systemd-networkd wpa-supplicant"
+
+HOBOT_WIFI_STANDALONE_CONFFILES = " \
+    ${sysconfdir}/systemd/network/30-rdk-x5-wlan0.network \
+    ${sysconfdir}/wpa_supplicant/wpa_supplicant-wlan0.conf \
+"
+
 # These are the complete AIC8800D80 files shipped by the pinned RDKOS source.
 # Do not copy the adjacent Broadcom/Realtek firmware or bundled host libraries:
 # they target other boards and would obscure the X5 hardware contract.
@@ -49,18 +61,17 @@ RDK_X5_AIC8800D80_FIRMWARE = " \
 "
 
 # The module roots keep Linux's generated dependency closure version-neutral.
-# BlueZ supplies hciattach for the board's ttyS5 transport; the WPA service is
-# intentionally credential-free and keeps its mutable configuration in /etc.
+# BlueZ supplies hciattach for the board's ttyS5 transport.  When selected,
+# the standalone WPA service is credential-free and keeps its mutable
+# configuration in /etc.
 RDEPENDS:${PN} = " \
     bash \
     bluez5 \
     iproute2-ip \
     iw \
     kmod \
-    systemd-networkd \
     util-linux-rfkill \
     wireless-regdb-static \
-    wpa-supplicant \
     kernel-module-aic8800-bsp \
     kernel-module-aic8800-fdrv \
     kernel-module-hci-uart \
@@ -68,7 +79,7 @@ RDEPENDS:${PN} = " \
 
 SYSTEMD_SERVICE:${PN} = " \
     hobot-wifi.service \
-    hobot-wpa-supplicant.service \
+    ${@bb.utils.contains('PACKAGECONFIG', 'standalone-wifi', 'hobot-wpa-supplicant.service', '', d)} \
     hobot-bluetooth.service \
 "
 SYSTEMD_AUTO_ENABLE = "enable"
@@ -91,36 +102,39 @@ do_install() {
     install -m 0644 ${UNPACKDIR}/20-rdk-x5-wireless.conf \
         ${D}${nonarch_libdir}/modules-load.d/20-rdk-x5-wireless.conf
 
-    install -d ${D}${sysconfdir}/systemd/network
-    install -m 0644 ${UNPACKDIR}/30-rdk-x5-wlan0.network \
-        ${D}${sysconfdir}/systemd/network/30-rdk-x5-wlan0.network
-
     install -d ${D}${sysconfdir}/default
     install -m 0644 ${UNPACKDIR}/hobot-wifi.default \
         ${D}${sysconfdir}/default/hobot-wifi
 
-    install -d ${D}${sysconfdir}/wpa_supplicant
-    install -m 0600 ${UNPACKDIR}/wpa_supplicant-wlan0.conf \
-        ${D}${sysconfdir}/wpa_supplicant/wpa_supplicant-wlan0.conf
+    if ${@bb.utils.contains('PACKAGECONFIG', 'standalone-wifi', 'true', 'false', d)}; then
+        install -d ${D}${sysconfdir}/systemd/network
+        install -m 0644 ${UNPACKDIR}/30-rdk-x5-wlan0.network \
+            ${D}${sysconfdir}/systemd/network/30-rdk-x5-wlan0.network
+
+        install -d ${D}${sysconfdir}/wpa_supplicant
+        install -m 0600 ${UNPACKDIR}/wpa_supplicant-wlan0.conf \
+            ${D}${sysconfdir}/wpa_supplicant/wpa_supplicant-wlan0.conf
+    fi
 
     install -d ${D}${libexecdir}/hobot-wifi
     install -m 0755 ${UNPACKDIR}/wait-for-hci0 \
         ${D}${libexecdir}/hobot-wifi/wait-for-hci0
 
     install -d ${D}${systemd_system_unitdir}
-    for service in \
-        hobot-wifi.service \
-        hobot-wpa-supplicant.service \
-        hobot-bluetooth.service; do
+    for service in hobot-wifi.service hobot-bluetooth.service; do
         install -m 0644 ${UNPACKDIR}/$service \
             ${D}${systemd_system_unitdir}/$service
     done
+
+    if ${@bb.utils.contains('PACKAGECONFIG', 'standalone-wifi', 'true', 'false', d)}; then
+        install -m 0644 ${UNPACKDIR}/hobot-wpa-supplicant.service \
+            ${D}${systemd_system_unitdir}/hobot-wpa-supplicant.service
+    fi
 }
 
 CONFFILES:${PN} += " \
     ${sysconfdir}/default/hobot-wifi \
-    ${sysconfdir}/systemd/network/30-rdk-x5-wlan0.network \
-    ${sysconfdir}/wpa_supplicant/wpa_supplicant-wlan0.conf \
+    ${@bb.utils.contains('PACKAGECONFIG', 'standalone-wifi', d.getVar('HOBOT_WIFI_STANDALONE_CONFFILES'), '', d)} \
 "
 
 FILES:${PN} += " \
